@@ -1,0 +1,107 @@
+from collections import Counter, defaultdict
+import pytest
+from scheduler import generate, Flight, Team, ScheduleError
+from tests.helpers import make_flight, make_teams
+
+def assert_hard_rules(s):
+    slots = Counter((m.week, m.round_no, m.court_no) for m in s.matches)
+    assert set(slots.values()) <= {1}                      # one game per court per round
+    assert all(1 <= m.court_no <= s.courts for m in s.matches)
+    busy = defaultdict(list)
+    for m in s.matches:
+        busy[(m.week, m.round_no)] += [*m.team_a.players, *m.team_b.players]
+    for players in busy.values():
+        assert len(players) == len(set(players))           # no player twice in a round
+
+def per_team(matches):
+    return Counter(t.id for m in matches for t in (m.team_a, m.team_b))
+
+def pair_counts(matches):
+    return Counter(frozenset((m.team_a.id, m.team_b.id)) for m in matches)
+
+def test_T1_swish_example():
+    s = generate([make_flight(4, [2, 2, 2, 2])], courts=2)
+    assert_hard_rules(s)
+    assert len(s.matches) == 16
+    for w in range(1, 5):
+        wk = s.week(w)
+        assert {(m.round_no, m.court_no) for m in wk} == {(1, 1), (1, 2), (2, 1), (2, 2)}
+        assert set(per_team(wk).values()) == {2}
+    assert set(per_team(s.matches).values()) == {8}
+    assert sorted(pair_counts(s.matches).values()) == [2, 2, 3, 3, 3, 3]
+
+def test_T2_different_numbers_week_to_week():
+    s = generate([make_flight(10, [1, 2])], courts=5)
+    assert_hard_rules(s)
+    assert len(s.week(1)) == 5 and max(m.round_no for m in s.week(1)) == 1
+    assert len(s.week(2)) == 10 and max(m.round_no for m in s.week(2)) == 2
+    assert set(per_team(s.week(1)).values()) == {1}
+    assert set(per_team(s.week(2)).values()) == {2}
+    assert set(pair_counts(s.matches).values()) == {1}
+
+def test_T4_odd_teams():
+    s = generate([make_flight(5, [5])], courts=2)
+    assert_hard_rules(s)
+    assert len(s.matches) == 10
+    assert max(m.round_no for m in s.matches) == 5
+    assert set(per_team(s.matches).values()) == {4}
+    assert set(pair_counts(s.matches).values()) == {1}
+
+def test_T5_player_in_two_flights():
+    mens = list(make_teams(4, "M")); mixed = list(make_teams(4, "X"))
+    mens[0] = Team("M1", "Team M1", ("pat", "M1-b"))
+    mixed[0] = Team("X1", "Team X1", ("pat", "X1-b"))
+    s = generate([Flight("men", "Int Men's", tuple(mens), (1,)),
+                  Flight("mix", "Int Mixed", tuple(mixed), (1,))], courts=4)
+    assert_hard_rules(s)
+    pats = [m.round_no for m in s.matches if "pat" in m.team_a.players + m.team_b.players]
+    assert sorted(pats) == [1, 2]
+    assert max(m.round_no for m in s.matches) == 2
+
+def test_T8_short_sits():
+    s = generate([make_flight(6, [2])], courts=2)
+    assert_hard_rules(s)
+    assert max(m.round_no for m in s.matches) == 3
+    rounds = defaultdict(list)
+    for m in s.matches:
+        rounds[m.team_a.id].append(m.round_no); rounds[m.team_b.id].append(m.round_no)
+    assert all(max(r) - min(r) - 1 <= 1 for r in rounds.values())
+
+def test_flights_are_interleaved():
+    s = generate([make_flight(4, [1], "A", "A"), make_flight(4, [1], "B", "B")], courts=2)
+    assert {m.flight_id for m in s.matches if m.round_no == 1} == {"A", "B"}
+
+@pytest.mark.parametrize("n", range(2, 13))
+@pytest.mark.parametrize("courts", [1, 2, 3, 5])
+def test_hard_rules_hold_everywhere(n, courts):
+    s = generate([make_flight(n, [2, 1, 3])], courts=courts)
+    assert_hard_rules(s)
+
+def test_one_court_gives_every_game_its_own_round():
+    s = generate([make_flight(4, [2])], courts=1)
+    assert sorted(m.round_no for m in s.matches) == [1, 2, 3, 4]
+
+def test_same_inputs_same_schedule():
+    args = ([make_flight(7, [2, 3, 1])], 3)
+    assert generate(*args) == generate(*args)
+
+def test_too_few_teams():
+    with pytest.raises(ScheduleError) as e:
+        generate([Flight("f", "Intermediate Mixed", make_teams(1), (1,))], courts=2)
+    assert str(e.value) == "Add at least 2 teams to Intermediate Mixed before generating."
+
+def test_player_on_two_teams_in_one_flight():
+    teams = (Team("a", "A", ("pat", "x")), Team("b", "B", ("pat", "y")))
+    with pytest.raises(ScheduleError) as e:
+        generate([Flight("f", "Int Men's", teams, (1,))], courts=2)
+    assert str(e.value) == "pat is on two teams in Int Men's."
+
+@pytest.mark.parametrize("flights,courts", [
+    ([make_flight(4, [1])], 0),                                   # no courts
+    ([make_flight(4, [-1])], 2),                                  # negative games
+    ([make_flight(4, [1, 1], "A", "A"), make_flight(4, [1], "B", "B")], 2),  # week counts differ
+    ([make_flight(4, [1]), make_flight(4, [1])], 2),              # duplicate flight / team ids
+])
+def test_invalid_inputs_raise(flights, courts):
+    with pytest.raises(ScheduleError):
+        generate(flights, courts)
