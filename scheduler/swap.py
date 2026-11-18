@@ -17,15 +17,17 @@ def _find(schedule: Schedule, slot: Slot) -> Match:
 
 
 def _clash(a: Match, b: Match) -> str | None:
-    """Who is double-booked between two matches (or within one when a is b)."""
+    """Who is double-booked between two matches (or within one when a is b):
+    "Team <name>" for a team, or the player's name when two different teams
+    share a player."""
     if a is b:
         if a.team_a.id == a.team_b.id:
-            return a.team_a.name
+            return f"Team {a.team_a.name}"
         return None
     for ta in (a.team_a, a.team_b):
         for tb in (b.team_a, b.team_b):
             if ta.id == tb.id:
-                return ta.name
+                return f"Team {ta.name}"
     for ta in (a.team_a, a.team_b):
         for tb in (b.team_a, b.team_b):
             for player in ta.players:
@@ -68,6 +70,9 @@ def swap_teams(
     schedule: Schedule, a: tuple[Slot, str], b: tuple[Slot, str]
 ) -> Schedule:
     (slot_a, side_a), (slot_b, side_b) = a, b
+    for side in (side_a, side_b):
+        if side not in ("a", "b"):
+            raise ValueError(f"Side must be 'a' or 'b', not {side!r}.")
     ma, mb = _find(schedule, slot_a), _find(schedule, slot_b)
     if a == b:
         return schedule

@@ -5,7 +5,7 @@ import json
 import sys
 from collections.abc import Sequence
 
-from scheduler.fairness import FairnessReport, fairness_report
+from scheduler.fairness import FairnessReport, fairness_report, summary_line
 from scheduler.fit import check_fit, fit_message
 from scheduler.generate import generate
 from scheduler.pairings import round_robin_preset
@@ -84,11 +84,14 @@ def _load_file(path: str) -> tuple[list[Flight], int]:
     except ValueError:
         raise ScheduleError(f"The file {path} is not valid JSON.") from None
     try:
-        return _flights_from_json(data)
+        flights, courts = _flights_from_json(data)
     except (KeyError, TypeError, AttributeError) as problem:
         raise ScheduleError(
             f"The file {path} is not in the expected shape: check {problem}."
         ) from None
+    if not flights:
+        raise ScheduleError(f"The file {path} has no flights; add at least one.")
+    return flights, courts
 
 
 def _is_int(value: object) -> bool:
@@ -130,17 +133,10 @@ def _table(rows: list[list[str]]) -> list[str]:
     ]
 
 
-def _times(n: int) -> str:
-    return {1: "once", 2: "twice"}.get(n, f"{n} times")
-
-
-def _span(low: int, high: int) -> str:
-    return str(low) if low == high else f"{low}–{high}"
-
-
 def _format_week(
     week: int,
     matches: Sequence[Match],
+    courts: int,
     flights: Sequence[Flight],
     report: FairnessReport,
     names: dict[str, str],
@@ -155,7 +151,6 @@ def _format_week(
     lines = [f"Week {week}"]
     if not matches:
         return lines + ["(no games)"]
-    courts = max(m.court_no for m in matches)
     rounds = max(m.round_no for m in matches)
     grid = [[""] + [f"Court {c}" for c in range(1, courts + 1)]]
     for r in range(1, rounds + 1):
@@ -174,24 +169,11 @@ def _format_week(
     return lines
 
 
-def _format_totals(
-    schedule: Schedule, flights: Sequence[Flight], report: FairnessReport
-) -> list[str]:
+def _format_totals(flights: Sequence[Flight], report: FairnessReport) -> list[str]:
     lines = []
     for flight in flights:
-        ids = {t.id for t in flight.teams}
-        games = sum(1 for m in schedule.matches if m.flight_id == flight.id)
-        per_team = [report.games_total[tid] for tid in ids]
-        pairs = [n for pair, n in report.pair_counts.items() if pair <= ids]
         label = "Total" if len(flights) == 1 else f"Total ({flight.name})"
-        if min(pairs) == max(pairs):
-            meets = _times(pairs[0])
-        else:
-            meets = f"{min(pairs)}–{max(pairs)} times"
-        lines.append(
-            f"{label}: {games} games · {_span(min(per_team), max(per_team))} per team"
-            f" · every pair meets {meets}"
-        )
+        lines.append(f"{label}: {summary_line(report, flight)}")
     return lines
 
 
@@ -200,9 +182,11 @@ def _render(schedule: Schedule, flights: Sequence[Flight]) -> list[str]:
     names = {t.id: t.name for f in flights for t in f.teams}
     lines: list[str] = []
     for week in sorted(report.games_by_week):
-        lines += _format_week(week, schedule.week(week), flights, report, names)
+        lines += _format_week(
+            week, schedule.week(week), schedule.courts, flights, report, names
+        )
         lines.append("")
-    return lines + _format_totals(schedule, flights, report)
+    return lines + _format_totals(flights, report)
 
 
 def _build_parser() -> argparse.ArgumentParser:

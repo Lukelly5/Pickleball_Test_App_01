@@ -80,21 +80,32 @@ def _window(minutes: int) -> str:
     return f"{minutes}-minute"
 
 
+def _count(n: int, thing: str) -> str:
+    return f"{n} {thing}" if n == 1 else f"{n} {thing}s"
+
+
 def fit_message(result: FitResult) -> str:
+    games = _count(result.games, "game")
+    rounds = _count(result.rounds, "round")
+    courts = _count(result.courts, "court")
     if result.fits:
         return (
-            f"{result.games} games · {result.rounds} rounds on {result.courts} courts · "
+            f"{games} · {rounds} on {courts} · "
             f"about {_duration(result.minutes)}. "
             f"Fits your {_window(result.window_minutes)} window."
         )
-    advice = (
-        "Add courts or extend the window."
-        if result.suggested_games_per_team is None
-        else "Add courts, extend the window, or lower games per team to "
-        f"{result.suggested_games_per_team}."
-    )
+    if result.rounds_that_fit == 0:
+        advice = "Extend the window."
+    elif result.suggested_games_per_team is None:
+        advice = "Add courts or extend the window."
+    else:
+        advice = (
+            "Add courts, extend the window, or lower games per team to "
+            f"{result.suggested_games_per_team}."
+        )
+    need = "needs" if result.games == 1 else "need"
     return (
-        f"{result.games} games need {result.rounds} rounds on {result.courts} courts "
+        f"{games} {need} {rounds} on {courts} "
         f"(~{_duration(result.minutes)}). Your {_window(result.window_minutes)} window "
-        f"fits {result.rounds_that_fit} rounds. {advice}"
+        f"fits {_count(result.rounds_that_fit, 'round')}. {advice}"
     )

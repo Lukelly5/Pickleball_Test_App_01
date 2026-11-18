@@ -53,3 +53,26 @@ def fairness_report(schedule: Schedule, flights: Sequence[Flight]) -> FairnessRe
         for w in weeks
     }
     return FairnessReport(games_by_week, games_total, pair_counts, longest_sit)
+
+
+def summary_line(report: FairnessReport, flight: Flight) -> str:
+    """One flight's totals in words, e.g.
+    "16 games · 8 per team · every pair meets 2–3 times"."""
+    ids = [t.id for t in flight.teams]
+    per_team = [report.games_total[tid] for tid in ids]
+    games = sum(per_team) // 2
+    pairs = [
+        report.pair_counts[frozenset((a, b))]
+        for i, a in enumerate(ids)
+        for b in ids[i + 1:]
+    ]
+    low, high = min(per_team), max(per_team)
+    each = str(low) if low == high else f"{low}–{high}"
+    if min(pairs) != max(pairs):
+        meets = f"{min(pairs)}–{max(pairs)} times"
+    else:
+        meets = {1: "once", 2: "twice"}.get(pairs[0], f"{pairs[0]} times")
+    return (
+        f"{games} {'game' if games == 1 else 'games'} · {each} per team"
+        f" · every pair meets {meets}"
+    )

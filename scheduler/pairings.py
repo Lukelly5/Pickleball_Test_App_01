@@ -41,6 +41,12 @@ def weekly_rotations(flight: Flight) -> list[list[list[Pairing]]]:
 
 def round_robin_preset(n_teams: int, weeks: int, times: int) -> tuple[int, ...]:
     """Games per team per week for playing everyone `times` times."""
+    if weeks < 1:
+        raise ScheduleError("Weeks must be at least 1.")
+    if n_teams < 2:
+        raise ScheduleError("A round robin needs at least 2 teams.")
+    if times not in (1, 2):
+        raise ScheduleError("A round robin preset is played once or twice.")
     total = times * (n_teams - 1 if n_teams % 2 == 0 else n_teams)
     if total < weeks:
         label = "once" if times == 1 else "twice"

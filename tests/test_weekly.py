@@ -65,3 +65,21 @@ def test_preset_blocks_an_empty_week():
         "Round robin once is 3 games per team, but you have 4 weeks. "
         "Week 4 has no games — reduce weeks or choose twice."
     )
+
+def test_preset_is_part_of_the_public_package():
+    import scheduler
+    assert scheduler.round_robin_preset is round_robin_preset
+    assert "round_robin_preset" in scheduler.__all__
+
+@pytest.mark.parametrize("n_teams,weeks,times,message", [
+    (4, 0, 1, "Weeks must be at least 1."),
+    (4, -2, 1, "Weeks must be at least 1."),
+    (1, 3, 1, "A round robin needs at least 2 teams."),
+    (0, 3, 1, "A round robin needs at least 2 teams."),
+    (4, 3, 0, "A round robin preset is played once or twice."),
+    (4, 3, 3, "A round robin preset is played once or twice."),
+])
+def test_preset_rejects_bad_numbers(n_teams, weeks, times, message):
+    with pytest.raises(ScheduleError) as e:
+        round_robin_preset(n_teams, weeks, times)
+    assert str(e.value) == message

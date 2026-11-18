@@ -7,7 +7,7 @@ def make_teams(n: int, prefix: str = "T") -> tuple[Team, ...]:
     return tuple(
         Team(
             id=f"{prefix}{i}",
-            name=f"Team {prefix}{i}",
+            name=f"{prefix}{i}",
             players=(f"{prefix}{i}-a", f"{prefix}{i}-b"),
         )
         for i in range(1, n + 1)

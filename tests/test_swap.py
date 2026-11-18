@@ -1,7 +1,7 @@
 import re
 import pytest
-from scheduler import generate, swap_games, swap_teams, SwapConflict
-from tests.helpers import make_flight
+from scheduler import generate, swap_games, swap_teams, SwapConflict, Flight, Match, Schedule, Team
+from tests.helpers import make_flight, make_teams
 
 def t1(): return generate([make_flight(4, [2, 2, 2, 2])], courts=2)
 
@@ -65,4 +65,34 @@ def test_team_swapped_into_its_own_match_reports_same_court_pair():
     with pytest.raises(SwapConflict) as e:
         swap_teams(s, ((1, 1, 1), "a"), ((1, 2, m2.court_no), side))
     assert str(e.value) == (
-        f"Can't swap: {m1.team_b.name} would play on Court 1 and Court 1 in Round 1.")
+        f"Can't swap: Team {m1.team_b.name} would play on Court 1 and Court 1 in Round 1.")
+
+def test_team_clash_message_says_team_then_the_name():
+    d, a, b, c = (Team(x, x, (f"{x}-1", f"{x}-2")) for x in ("Dinkers", "A", "B", "C"))
+    s = Schedule((Match("F", 1, 1, 1, d, a), Match("F", 1, 1, 2, b, c),
+                  Match("F", 1, 2, 1, d, b), Match("F", 1, 2, 2, a, c)), courts=2)
+    with pytest.raises(SwapConflict) as e:
+        swap_games(s, (1, 1, 2), (1, 2, 1))
+    assert str(e.value).startswith("Can't swap: Team Dinkers would play on Court")
+    assert str(e.value) == "Can't swap: Team Dinkers would play on Court 1 and Court 2 in Round 1."
+
+def test_player_clash_message_names_the_player_without_a_prefix():
+    mens = list(make_teams(4, "M")); mixed = list(make_teams(4, "X"))
+    mens[0] = Team("M1", "M1", ("pat", "M1-b"))
+    mixed[0] = Team("X1", "X1", ("pat", "X1-b"))
+    s = generate([Flight("men", "Int Men's", tuple(mens), (1,)),
+                  Flight("mix", "Int Mixed", tuple(mixed), (1,))], courts=4)
+    def has_pat(m): return "pat" in m.team_a.players + m.team_b.players
+    late = next(m for m in s.matches if has_pat(m) and m.round_no == 2)
+    early = next(m for m in s.matches if not has_pat(m) and m.round_no == 1)
+    with pytest.raises(SwapConflict) as e:
+        swap_games(s, (1, 2, late.court_no), (1, 1, early.court_no))
+    assert re.fullmatch(
+        r"Can't swap: pat would play on Court \d and Court \d in Round 1\.", str(e.value))
+
+@pytest.mark.parametrize("sides", [("a", "x"), ("left", "b"), ("A", "b"), ("a", "")])
+def test_swap_teams_rejects_an_unknown_side(sides):
+    with pytest.raises(ValueError) as e:
+        swap_teams(t1(), ((1, 1, 1), sides[0]), ((1, 1, 2), sides[1]))
+    assert not isinstance(e.value, SwapConflict)
+    assert "'a' or 'b'" in str(e.value)

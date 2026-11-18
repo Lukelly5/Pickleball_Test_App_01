@@ -161,3 +161,61 @@ def test_twelve_teams_five_games_two_courts_is_quick():
     start = time.perf_counter()
     generate([make_flight(12, [5])], courts=2)
     assert time.perf_counter() - start < 1
+
+def test_same_team_id_in_two_flights():
+    with pytest.raises(ScheduleError) as e:
+        generate([make_flight(4, [1], "A", "T"), make_flight(4, [1], "B", "T")], courts=2)
+    assert str(e.value) == "Team id T1 is used more than once."
+
+def test_same_player_twice_on_one_team():
+    teams = (Team("a", "Aces", ("pat", "pat")), Team("b", "Bangers", ("x", "y")))
+    with pytest.raises(ScheduleError) as e:
+        generate([Flight("f", "Int Men's", teams, (1,))], courts=2)
+    assert str(e.value) == "pat is listed twice on Aces."
+
+# PRD T7, through the whole generator
+@pytest.mark.parametrize("n", range(4, 13))
+@pytest.mark.parametrize("g", [1, 2, 3])
+def test_T7_nobody_gets_an_empty_night(n, g):
+    flight = make_flight(n, [g] * 4)
+    s = generate([flight], courts=3)
+    assert_hard_rules(s)
+    for w in range(1, 5):
+        counts = per_team(s.week(w))
+        played = [counts.get(t.id, 0) for t in flight.teams]
+        if n % 2 == 0:
+            assert set(played) == {g}
+        else:
+            assert set(played) <= {g, g - 1}
+            if g >= 2:
+                assert min(played) >= 1
+
+# PRD T9, through the whole generator
+def test_T9_rotating_bye():
+    flight = make_flight(5, [1] * 5)
+    s = generate([flight], courts=2)
+    assert_hard_rules(s)
+    sat_out = []
+    for w in range(1, 6):
+        assert len(s.week(w)) == 2
+        playing = set(per_team(s.week(w)))
+        sat_out += [t.id for t in flight.teams if t.id not in playing]
+    assert sorted(sat_out) == sorted(t.id for t in flight.teams)
+    pairs = pair_counts(s.matches)
+    assert len(pairs) == 10 and set(pairs.values()) == {1}
+
+@pytest.mark.parametrize("make", [
+    lambda: ([make_flight(4, [2, 2, 2, 2])], 2),
+    lambda: ([make_flight(12, [2])], 1),
+    lambda: ([make_flight(9, [3, 0, 4])], 2),
+    lambda: ([make_flight(12, [5, 3])], 2),
+    lambda: ([make_flight(5, [2, 1], "A", "A"), make_flight(8, [3, 2], "B", "B")], 3),
+    lambda: (shared_player_flights(3), 4),
+    lambda: ([make_flight(11, [4]), make_flight(6, [5], "B", "B"), make_flight(3, [2], "C", "C")], 5),
+])
+def test_same_inputs_same_schedule_for_varied_inputs(make):
+    (flights, courts), (again, _) = make(), make()
+    first, second = generate(flights, courts), generate(again, courts)
+    assert first == second
+    assert first.matches == second.matches
+    assert_hard_rules(first)

@@ -65,3 +65,17 @@ def test_file_uses_team_names_and_flight_prefix(capsys):
     code, out, _ = run(capsys, "league", "--file", "examples/two_flights.json")
     assert "Int Men's: Dinkers v" in out
     assert "Total (Int Men's):" in out and "Total (Int Mixed):" in out
+
+def test_file_with_no_flights_is_an_error(capsys, tmp_path):
+    path = tmp_path / "empty.json"
+    path.write_text('{"courts": 2, "flights": []}', encoding="utf-8")
+    code, out, err = run(capsys, "league", "--file", str(path))
+    assert code == 2 and out == ""
+    assert err.startswith("error: ") and "has no flights" in err and err.count("\n") == 1
+
+def test_grid_shows_every_court_even_when_unused(capsys):
+    code, out, _ = run(capsys, "league", "--teams", "4", "--weeks", "1",
+                       "--games-per-team", "1", "--courts", "4")
+    assert code == 0
+    header = out.splitlines()[1]
+    assert header.split() == ["Court", "1", "Court", "2", "Court", "3", "Court", "4"]
