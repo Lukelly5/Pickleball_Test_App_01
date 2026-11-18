@@ -1,0 +1,25 @@
+{
+  "courts": 4,
+  "flights": [
+    {
+      "name": "Int Men's",
+      "games_per_team": [1],
+      "teams": [
+        {"name": "Dinkers", "players": ["Pat", "Sam"]},
+        {"name": "Smashers", "players": ["Lee", "Kim"]},
+        {"name": "Lobsters", "players": ["Ana", "Ben"]},
+        {"name": "Volleyers", "players": ["Cal", "Dee"]}
+      ]
+    },
+    {
+      "name": "Int Mixed",
+      "games_per_team": [1],
+      "teams": [
+        {"name": "Net Ninjas", "players": ["Pat", "Eve"]},
+        {"name": "Paddle Pals", "players": ["Fay", "Gus"]},
+        {"name": "Third Shots", "players": ["Hal", "Ivy"]},
+        {"name": "Kitchen Crew", "players": ["Jon", "Kay"]}
+      ]
+    }
+  ]
+}
