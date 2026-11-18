@@ -8,7 +8,7 @@ Nov 17, 2026 · @Luke · revised Nov 18, 2026
 | --- | --- | --- |
 | C1 | Scheduler input is now **games per team** each week, not total games per flight | The old input allowed weeks where one team played twice and another not at all |
 | C2 | Pass 1 takes whole rotations; the "automatically within 1" claim is removed | It was only true across the season, not within a week |
-| C3 | Pass 2 places longest-waiting teams first; fairness panel shows longest wait | Nothing stopped a team playing Round 1 and Round 6 |
+| C3 | Pass 2 arranges each night to keep a team's games close together; fairness panel shows longest wait | Nothing stopped a team playing Round 1 and Round 6 |
 | C4 | Tournament "cap games per team" is the same games-per-team input | One mechanism for leagues and tournaments |
 | C5 | Clashing swaps are blocked outright (no "Swap anyway?") | The old text said both |
 | C6 | Score validation warns admins instead of blocking them | Timed games can end 9–7 |
