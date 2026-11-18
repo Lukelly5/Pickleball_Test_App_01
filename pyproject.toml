@@ -5,3 +5,6 @@ requires-python = ">=3.13"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = ["pytest>=9"]
