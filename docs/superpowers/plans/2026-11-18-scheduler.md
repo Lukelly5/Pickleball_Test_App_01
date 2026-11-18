@@ -541,8 +541,12 @@ def test_swap_teams_within_a_round_is_allowed():
     assert sorted(ids) == ["T1", "T2", "T3", "T4"]
 
 def test_swap_teams_across_rounds_is_blocked():
-    with pytest.raises(SwapConflict):
-        swap_teams(t1(), ((1, 1, 1), "a"), ((1, 2, 1), "a"))
+    # side "a" of court 1 is the fixed circle-method seat (same team every round),
+    # so swap the "b" sides: two different teams, each already playing in the other round.
+    with pytest.raises(SwapConflict) as e:
+        swap_teams(t1(), ((1, 1, 1), "b"), ((1, 2, 1), "b"))
+    assert re.fullmatch(
+        r"Can't swap: Team T\d would play on Court 1 and Court 2 in Round 1\.", str(e.value))
 
 def test_swap_teams_across_flights_is_blocked():
     s = generate([make_flight(4, [1], "A", "A"), make_flight(4, [1], "B", "B")], courts=4)
