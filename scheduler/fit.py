@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
 from scheduler.generate import generate
+from scheduler.pairings import weekly_rotations
 from scheduler.types import Flight, ScheduleError
 
 
@@ -21,6 +22,21 @@ def _rounds_needed(flights: Sequence[Flight], courts: int) -> tuple[int, int]:
     schedule = generate(flights, courts)
     rounds = max((m.round_no for m in schedule.matches), default=0)
     return len(schedule.matches), rounds
+
+
+def _fewest_rounds(flights: Sequence[Flight], courts: int) -> int:
+    """A floor on the rounds a one-week event needs, without arranging it:
+    only `courts` games fit in a round, and a player needs a round for each
+    of their games."""
+    games = 0
+    games_of: dict[str, int] = {}
+    for flight in flights:
+        for rotation in weekly_rotations(flight)[0]:
+            for team_a, team_b in rotation:
+                games += 1
+                for player in (*team_a.players, *team_b.players):
+                    games_of[player] = games_of.get(player, 0) + 1
+    return max(-(-games // courts), max(games_of.values(), default=0))
 
 
 def check_fit(
@@ -49,6 +65,8 @@ def check_fit(
                 replace(f, games_per_team_by_week=(min(f.games_per_team_by_week[0], cap),))
                 for f in flights
             ]
+            if _fewest_rounds(capped, courts) > rounds_that_fit:
+                continue  # cannot fit, so there is no need to arrange it
             if _rounds_needed(capped, courts)[1] <= rounds_that_fit:
                 suggestion = cap
                 break

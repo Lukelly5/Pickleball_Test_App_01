@@ -1,5 +1,5 @@
 import pytest
-from scheduler import check_fit, fit_message, ScheduleError
+from scheduler import check_fit, fit_message, generate, ScheduleError
 from tests.helpers import make_flight
 
 def test_T3_does_not_fit():
@@ -53,3 +53,25 @@ def test_window_shorter_than_one_game():
 def test_adding_courts_is_not_suggested_when_no_round_fits():
     r = check_fit([make_flight(8, [7])], courts=4, game_minutes=15, window_minutes=10)
     assert fit_message(r).endswith("fits 0 rounds. Extend the window.")
+
+def test_sixteen_team_round_robin_fit_check_is_quick():
+    import time
+    start = time.perf_counter()
+    r = check_fit([make_flight(16, [15])], courts=4, game_minutes=15, window_minutes=60)
+    elapsed = time.perf_counter() - start
+    assert (r.games, r.rounds, r.fits) == (120, 30, False)
+    assert (r.rounds_that_fit, r.suggested_games_per_team) == (4, 2)
+    assert elapsed < 5          # measured at about 0.3 s
+
+@pytest.mark.parametrize("n,courts,window", [
+    (8, 4, 60), (8, 4, 45), (9, 2, 100), (12, 2, 120), (12, 6, 60), (7, 3, 45), (6, 1, 200),
+])
+def test_suggestion_is_the_largest_number_of_games_that_fits(n, courts, window):
+    full = n - 1 if n % 2 == 0 else n
+    r = check_fit([make_flight(n, [full])], courts, 15, window)
+    def fits(games):
+        s = generate([make_flight(n, [games])], courts)
+        return max(m.round_no for m in s.matches) <= r.rounds_that_fit
+    fitting = [g for g in range(1, full) if fits(g)]
+    assert not r.fits
+    assert r.suggested_games_per_team == (max(fitting) if fitting else None)

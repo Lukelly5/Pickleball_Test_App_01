@@ -12,6 +12,7 @@ No step lets a player be in two games in one round, uses more courts than
 there are, or adds a round to the first draft.
 """
 
+from bisect import bisect_right, insort
 from collections.abc import Sequence
 from itertools import zip_longest
 
@@ -155,29 +156,38 @@ class _Night:
 
     def __init__(self, games: Sequence[Game], courts: int) -> None:
         self.courts = courts
-        self.players = [_players(game) for game in games]
         self.teams = [(a.id, b.id) for _, (a, b) in games]
         self.games_of: dict[str, list[int]] = {}
         for i, pair in enumerate(self.teams):
             for team_id in pair:
                 self.games_of.setdefault(team_id, []).append(i)
+        # rivals[i]: the other games that share a player with game i, so
+        # can never be in the same round as it.
+        games_with: dict[str, list[int]] = {}
+        for i, game in enumerate(games):
+            for player in sorted(_players(game)):
+                games_with.setdefault(player, []).append(i)
+        self.rivals: list[set[int]] = [
+            {g for player in _players(game) for g in games_with[player]} - {i}
+            for i, game in enumerate(games)
+        ]
         # A sit of s idle rounds costs weight ** s. The weight is bigger than
         # the number of sits in the night, so one longer sit always costs
         # more than any number of shorter ones: the longest sit is shortened
         # first, then the next longest, and so on.
         self.weight = 2 * len(games) + 1
 
-    def _team_cost(
-        self, team_id: str, rounds: Sequence[int], moved: dict[int, int]
-    ) -> int:
-        played = sorted(moved.get(g, rounds[g]) for g in self.games_of[team_id])
-        return sum(
-            self.weight ** (b - a - 1) for a, b in zip(played, played[1:]) if b - a > 1
-        )
-
     def cost(self, rounds: Sequence[int]) -> int:
         """How bad the waits are; 0 means nobody sits between games."""
-        return sum(self._team_cost(team_id, rounds, {}) for team_id in self.games_of)
+        total = 0
+        for games in self.games_of.values():
+            played = sorted(rounds[g] for g in games)
+            total += sum(
+                self.weight ** (b - a - 1)
+                for a, b in zip(played, played[1:])
+                if b - a > 1
+            )
+        return total
 
     def close_gaps(self, rounds: Sequence[int]) -> list[int]:
         """Tidy up: make the single change that shortens the waits most, and
@@ -186,73 +196,217 @@ class _Night:
         A change moves one game to a round with a free court, or trades the
         rounds of two games; it is only tried if no player would end up in
         two games in one round. When no such change helps, trading two whole
-        rounds is tried instead. Ties go to the change found first.
+        rounds is tried instead. Ties go to the change found first: lowest
+        game, a move before a trade, lowest round or partner.
+
+        The answer is the same as looking at every change afresh each time.
+        To save work, the bookkeeping below is kept up to date as games
+        move, and a game's best change is only worked out again when the
+        last change could have altered it.
         """
         rounds = list(rounds)
-        games = range(len(rounds))
-        now = {t: self._team_cost(t, rounds, {}) for t in self.games_of}
+        count = len(rounds)
+        last = max(rounds, default=0)
+        courts = self.courts
+        teams = self.teams
+        rivals = self.rivals
 
-        def gain(moved: dict[int, int]) -> int:
-            """How much the waits shrink if these games change round."""
-            affected = sorted({t for g in moved for t in self.teams[g]})
-            return sum(now[t] - self._team_cost(t, rounds, moved) for t in affected)
+        # apart[d]: cost of two games of one team that are d rounds apart.
+        apart = [0, 0] + [self.weight**s for s in range(1, last)]
+        # members[r]: the games in round r.
+        members: list[list[int]] = [[] for _ in range(last + 1)]
+        for i, r in enumerate(rounds):
+            members[r].append(i)
+        # played[team]: the rounds the team plays in, in order.
+        played = {t: sorted(rounds[g] for g in gs) for t, gs in self.games_of.items()}
+        # blocked[i][r]: how many games in round r share a player with game i.
+        blocked = [[0] * (last + 1) for _ in range(count)]
+        for i in range(count):
+            for k in rivals[i]:
+                blocked[i][rounds[k]] += 1
 
-        # alone[i][r] is the gain from moving only game i to round r. It is
-        # worked out once and redone only for teams whose games just moved.
-        alone: dict[int, dict[int, int]] = {}
+        def team_row(team: str, home: int) -> list[int]:
+            """row[r]: how much the team's waits shrink if its game in round
+            `home` moves to round r (negative if they grow)."""
+            rest = [r for r in played[team] if r != home]
+            row = [0] * (last + 1)
+            if not rest:
+                return row
+            size = len(rest)
+            m = 0
+            for to in range(1, last + 1):  # row[to] = cost of a game in `to`
+                while m < size and rest[m] < to:
+                    m += 1
+                if m == 0:
+                    row[to] = apart[rest[0] - to]
+                elif m == size:
+                    row[to] = apart[to - rest[-1]]
+                else:
+                    lo, hi = rest[m - 1], rest[m]
+                    row[to] = apart[to - lo] + apart[hi - to] - apart[hi - lo]
+            here = row[home]
+            return [0] + [here - there for there in row[1:]]
+
+        # part[i]: the two team rows of game i. alone[i][r]: their sum, the
+        # gain from moving only game i to round r.
+        part: list[tuple[list[int], list[int]]] = [([], [])] * count
+        alone: list[list[int]] = [[]] * count
+
+        def trade_gain(i: int, j: int) -> int:
+            """Gain from trading the rounds of games i and j; 0 if not allowed."""
+            home, away = rounds[i], rounds[j]
+            if away == home:
+                return 0
+            near = j in rivals[i]  # then j itself is one of the games in i's way
+            if blocked[i][away] != near or blocked[j][home] != near:
+                return 0
+            return trade_value(i, j, home, away, near)
+
+        def trade_value(i: int, j: int, home: int, away: int, near: bool) -> int:
+            """Gain from an allowed trade of game i (in `home`) and j (in `away`)."""
+            if near:
+                ia, ib = teams[i]
+                ja, jb = teams[j]
+                if ia == ja or ia == jb or ib == ja or ib == jb:
+                    # A team in both games plays the same two rounds as before.
+                    value = 0
+                    if ia != ja and ia != jb:
+                        value += part[i][0][away]
+                    if ib != ja and ib != jb:
+                        value += part[i][1][away]
+                    if ja != ia and ja != ib:
+                        value += part[j][0][home]
+                    if jb != ia and jb != ib:
+                        value += part[j][1][home]
+                    return value
+            return alone[i][away] + alone[j][home]
+
+        def scan(i: int, used: Sequence[int]) -> tuple[int, int] | None:
+            """Game i's best change as (gain, key): key is the round to move
+            to, or last + 1 + j for a trade with a later game j."""
+            home = rounds[i]
+            mine = alone[i]
+            stop = blocked[i]
+            value, key = 0, -1
+            for r in used:
+                if r != home and not stop[r] and len(members[r]) < courts:
+                    if mine[r] > value:
+                        value, key = mine[r], r
+            near_me = rivals[i]
+            for j in range(i + 1, count):  # the same test as trade_gain
+                away = rounds[j]
+                if away == home:
+                    continue
+                near = j in near_me
+                if stop[away] != near or blocked[j][home] != near:
+                    continue
+                gain = trade_value(i, j, home, away, near)
+                if gain > value:
+                    value, key = gain, last + 1 + j
+            return (value, key) if key >= 0 else None
+
+        best_of: list[tuple[int, int] | None] = [None] * count
+        everything = True  # work everything out again
+        stale: list[tuple[int, int]] = []  # (game, side): team rows to redo
+        dirty: list[int] = []  # games whose changes may have altered
+        touched: list[int] = []  # rounds whose games changed
+
         # Each change lowers the cost, so this ends by itself; the cap is a backstop.
         for _ in range(10 * len(rounds)):
-            in_round: dict[int, list[int]] = {}
-            for i, r in enumerate(rounds):
-                in_round.setdefault(r, []).append(i)
-            used = sorted(in_round)
-            for i in games:
-                if i not in alone:
-                    alone[i] = {r: gain({i: r}) for r in used}
-            # clash[i][r]: the games in round r that share a player with game i.
-            clash = [
-                {
-                    r: [g for g in in_round[r] if g != i and self.players[g] & self.players[i]]
-                    for r in used
-                }
-                for i in games
-            ]
+            used = [r for r in range(1, last + 1) if members[r]]
+            if everything:
+                stale = [(i, side) for i in range(count) for side in (0, 1)]
+            for i, side in stale:
+                row = team_row(teams[i][side], rounds[i])
+                part[i] = (row, part[i][1]) if side == 0 else (part[i][0], row)
+            for i in sorted({i for i, _ in stale}):
+                alone[i] = [x + y for x, y in zip(*part[i])]
+            if everything:
+                for i in range(count):
+                    best_of[i] = scan(i, used)
+            else:
+                dirty_set = set(dirty)
+                for i in range(count):
+                    known = best_of[i]
+                    if i in dirty_set or (
+                        known is not None
+                        and (
+                            known[1] in touched
+                            if known[1] <= last
+                            else known[1] - last - 1 in dirty_set
+                        )
+                    ):
+                        best_of[i] = scan(i, used)
+                        continue
+                    # Only moves into a touched round and trades with a dirty
+                    # game can have altered; the rest of what is known stands.
+                    value, key = known if known is not None else (0, -1)
+                    home = rounds[i]
+                    for r in touched:
+                        if r == home or not members[r] or blocked[i][r]:
+                            continue
+                        if len(members[r]) >= courts:
+                            continue
+                        gain = alone[i][r]
+                        if gain > value or (gain == value and 0 <= r < key):
+                            value, key = gain, r
+                    for j in dirty[bisect_right(dirty, i):]:
+                        gain = trade_gain(i, j)
+                        if gain > value or (gain == value and 0 <= last + 1 + j < key):
+                            value, key = gain, last + 1 + j
+                    best_of[i] = (value, key) if key >= 0 else None
 
             best: dict[int, int] = {}
             best_gain = 0
-            for i in games:
-                home = rounds[i]
-                for r in used:
-                    if r == home or clash[i][r] or len(in_round[r]) >= self.courts:
-                        continue
-                    if alone[i][r] > best_gain:
-                        best, best_gain = {i: r}, alone[i][r]
-                for j in range(i + 1, len(rounds)):
-                    away = rounds[j]
-                    if away == home or clash[i][away] not in ([], [j]):
-                        continue
-                    if clash[j][home] not in ([], [i]):
-                        continue
-                    if set(self.teams[i]) & set(self.teams[j]):
-                        value = gain({i: away, j: home})
+            for i in range(count):
+                known = best_of[i]
+                if known is not None and known[0] > best_gain:
+                    best_gain, key = known
+                    if key <= last:
+                        best = {i: key}
                     else:
-                        value = alone[i][away] + alone[j][home]
-                    if value > best_gain:
-                        best, best_gain = {i: away, j: home}, value
+                        j = key - last - 1
+                        best = {i: rounds[j], j: rounds[i]}
+            everything = not best
             if not best:
                 for n, a in enumerate(used):
                     for b in used[n + 1:]:
-                        moved = {g: b for g in in_round[a]} | {g: a for g in in_round[b]}
-                        if (value := gain(moved)) > best_gain:
-                            best, best_gain = moved, value
+                        gain = 0
+                        for here, there in ((a, b), (b, a)):
+                            for g in members[here]:
+                                for side in (0, 1):
+                                    if there not in played[teams[g][side]]:
+                                        gain += part[g][side][there]
+                        if gain > best_gain:
+                            best_gain = gain
+                            best = {g: b for g in members[a]} | {g: a for g in members[b]}
             if not best:
                 break
+
+            touched = sorted({rounds[g] for g in best} | set(best.values()))
             for game, r in best.items():
+                home = rounds[game]
                 rounds[game] = r
-            for team_id in sorted({t for g in best for t in self.teams[g]}):
-                now[team_id] = self._team_cost(team_id, rounds, {})
-                for game in self.games_of[team_id]:
-                    alone.pop(game, None)
+                members[home].remove(game)
+                members[r].append(game)
+                for k in rivals[game]:
+                    blocked[k][home] -= 1
+                    blocked[k][r] += 1
+                for team_id in teams[game]:
+                    played[team_id].remove(home)
+                    insort(played[team_id], r)
+            # Rows change for every game of a team that had a game moved.
+            stale = sorted(
+                {
+                    (g, teams[g].index(t))
+                    for moved in best
+                    for t in teams[moved]
+                    for g in self.games_of[t]
+                }
+            )
+            dirty = sorted(
+                {g for g, _ in stale} | {g for r in touched for g in members[r]}
+            )
         # Close up any round that was emptied.
         number = {r: n for n, r in enumerate(sorted(set(rounds)), start=1)}
         return [number[r] for r in rounds]

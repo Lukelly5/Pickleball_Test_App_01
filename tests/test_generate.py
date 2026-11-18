@@ -219,3 +219,18 @@ def test_same_inputs_same_schedule_for_varied_inputs(make):
     assert first == second
     assert first.matches == second.matches
     assert_hard_rules(first)
+
+# Mid-sized nights: the shortest possible night and the longest sit recorded
+# when the tidy-up was made faster (a change in either means the arrangement changed).
+@pytest.mark.parametrize("n,games,courts,rounds,sit", [
+    (12, 10, 2, 30, 3),
+    (16, 7, 4, 14, 2),
+    (16, 15, 4, 30, 2),
+])
+def test_mid_sized_night_keeps_its_shape(n, games, courts, rounds, sit):
+    s = generate([make_flight(n, [games])], courts=courts)
+    assert_hard_rules(s)
+    assert len(s.matches) == n * games // 2
+    assert set(per_team(s.matches).values()) == {games}
+    assert max(m.round_no for m in s.matches) == rounds == ceil(len(s.matches) / courts)
+    assert longest_sit(s.matches) == sit
