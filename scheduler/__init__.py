@@ -1,9 +1,13 @@
 from scheduler.fairness import FairnessReport, fairness_report
+from scheduler.fit import FitResult, check_fit, fit_message
 from scheduler.generate import generate
 from scheduler.swap import SwapConflict, swap_games, swap_teams
 from scheduler.types import Flight, Match, Schedule, ScheduleError, Team
 
 __all__ = [
+    "check_fit",
+    "fit_message",
+    "FitResult",
     "generate",
     "fairness_report",
     "FairnessReport",
