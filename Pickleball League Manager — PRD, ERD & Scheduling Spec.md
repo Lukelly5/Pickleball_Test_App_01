@@ -353,11 +353,13 @@ Total games in a week = *g* × (number of teams ÷ 2, rounded down).
 
 ### Pass 2 — Rounds and courts for the night
 
+Which games are played that night is already fixed by Pass 1. Pass 2 only decides the round and court for each one.
+
 1. Gather every game that night from every flight.
-2. Work through the night one rotation at a time: the first rotation of every flight, then the second rotation of every flight, and so on. Within a rotation, take games from each flight in turn so flights stay interleaved.
-3. Before placing a rotation, order its games so the teams that last played longest ago go first (ties keep list order). This keeps a team's games close together.
-4. Put each game in the earliest round where it has a free court and none of its 4 players is already playing. Use the lowest-numbered free court.
-5. Repeat until every game is placed. The number of rounds used is the length of the night.
+2. **First draft.** Work through the night one rotation at a time: the first rotation of every flight, then the second, and so on. Within a rotation, take games from each flight in turn so flights stay interleaved, with the teams that last played longest ago first. Put each game in the earliest round where it has a free court and none of its 4 players is already playing.
+3. **Second draft.** Start again and fill one round at a time. For each free court, pick the game whose team has been waiting longest since its last game. A team that has as many games left as there are rounds left plays now. This draft is dropped if it needs more rounds than the first.
+4. **Tidy up each draft.** Look at every way to move one game to a round with a free court, or to trade the rounds of two games, without putting a player in two games at once. Make the change that shortens the waits most, and repeat until nothing helps. If no single game helps, try trading two whole rounds. The longest wait is shortened first, then the next longest. A tidy-up never adds a round.
+5. Keep the draft with the shorter waits. In each round, games take the lowest-numbered courts. The number of rounds used is the length of the night; it is never more than the first draft needed.
 6. **Tournament fit check:** rounds needed × game length vs the time window. If it doesn't fit, show the Flow C message and suggest the largest games-per-team number that does fit.
 
 ### Worked test cases (acceptance tests)
@@ -387,7 +389,7 @@ Expected: 16 games; every team plays 2 a night and 8 total; AB, CD, AC, BD meet 
 
 **T7 — Nobody gets an empty night.** For every team count from 4 to 12, 4 weeks, and 1, 2 or 3 games per team: with an even count every team plays exactly that number every week; with an odd count every team plays that number or one fewer, and no team has zero games in a week where the number is 2 or more.
 
-**T8 — Short sits: 6 teams, 2 games per team, 2 courts.** 6 games. Expected: the night takes 3 rounds (the minimum), and no team sits out more than 1 round between its two games.
+**T8 — Short sits: 6 teams, 2 games per team, 2 courts.** 6 games. Expected: the night takes 3 rounds (the minimum), and no team sits out more than 1 round between its two games. The same holds when courts are scarcer: with 2 courts and 2 games per team, 8 teams take 4 rounds, 10 teams take 5 and 12 teams take 6, and still no team sits out more than 1 round. (12 teams, 3 games per team, 2 courts: 9 rounds, at most 1 round's sit. 12 teams, 2 games per team, 1 court: 12 rounds, at most 1 round's sit.)
 
 **T9 — Rotating bye: 5 teams, 5 weeks, 1 game per team.** Each week has 2 games and 1 team sitting out. Expected: each team sits out exactly once over the 5 weeks, and every pair meets exactly once.
 

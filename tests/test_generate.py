@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+from math import ceil
 import pytest
 from scheduler import generate, Flight, Team, ScheduleError
 from tests.helpers import make_flight, make_teams
@@ -105,3 +106,58 @@ def test_player_on_two_teams_in_one_flight():
 def test_invalid_inputs_raise(flights, courts):
     with pytest.raises(ScheduleError):
         generate(flights, courts)
+
+
+def longest_sit(matches):
+    rounds = defaultdict(list)
+    for m in matches:
+        rounds[m.team_a.id].append(m.round_no); rounds[m.team_b.id].append(m.round_no)
+    return max(b - a - 1 for r in rounds.values() for a, b in zip(sorted(r), sorted(r)[1:]))
+
+# teams, games per team, courts -> longest sit the placement must not exceed
+@pytest.mark.parametrize("n,games,courts,bound", [
+    (8, 2, 2, 1),
+    (10, 2, 2, 1),
+    (12, 2, 2, 1),
+    (12, 3, 2, 1),
+    (12, 2, 3, 1),
+    (9, 3, 2, 1),
+    (12, 2, 1, 1),
+])
+def test_games_sit_close_together_when_courts_are_short(n, games, courts, bound):
+    s = generate([make_flight(n, [games])], courts=courts)
+    assert_hard_rules(s)
+    assert longest_sit(s.matches) <= bound
+
+def shared_player_flights(games):
+    a = list(make_teams(6, "A")); b = list(make_teams(6, "B"))
+    a[0] = Team("A1", "A1", ("pat", "A1-b"))
+    b[0] = Team("B1", "B1", ("pat", "B1-b"))
+    return [Flight("A", "Flight A", tuple(a), (games,)),
+            Flight("B", "Flight B", tuple(b), (games,))]
+
+def test_shared_player_does_not_spread_the_other_teams_out():
+    # pat plays 4 games, so the night needs 4 rounds; nobody should sit in between
+    s = generate(shared_player_flights(2), courts=6)
+    assert_hard_rules(s)
+    assert max(m.round_no for m in s.matches) == 4
+    assert longest_sit(s.matches) == 0
+
+# A night can't be shorter than this: only min(courts, teams // 2) games fit
+# in a round, and a team needs a round for each of its games.
+@pytest.mark.parametrize("n", range(2, 13))
+@pytest.mark.parametrize("games", [1, 2, 3, 5])
+@pytest.mark.parametrize("courts", [1, 2, 3, 4, 6])
+def test_night_is_as_short_as_possible(n, games, courts):
+    s = generate([make_flight(n, [games])], courts=courts)
+    assert_hard_rules(s)
+    most_by_a_team = max(per_team(s.matches).values())
+    shortest = max(ceil(len(s.matches) / min(courts, n // 2)), most_by_a_team)
+    assert max(m.round_no for m in s.matches) == shortest
+    assert set(m.round_no for m in s.matches) == set(range(1, shortest + 1))
+
+def test_twelve_teams_five_games_two_courts_is_quick():
+    import time
+    start = time.perf_counter()
+    generate([make_flight(12, [5])], courts=2)
+    assert time.perf_counter() - start < 1
