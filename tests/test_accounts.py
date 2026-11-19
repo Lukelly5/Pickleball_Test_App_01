@@ -38,3 +38,21 @@ def test_user_belongs_to_organization():
 
 def test_admin_login_page_loads(client):
     assert client.get("/admin/login/").status_code == 200
+
+
+def test_admin_add_user_page_loads(admin_client):
+    assert admin_client.get("/admin/accounts/user/add/").status_code == 200
+
+
+def test_admin_add_user_form_creates_user(admin_client):
+    response = admin_client.post(
+        "/admin/accounts/user/add/",
+        {
+            "email": "new@example.com",
+            "usable_password": "true",
+            "password1": "pw-Str0ng-12345",
+            "password2": "pw-Str0ng-12345",
+        },
+    )
+    assert response.status_code == 302
+    assert User.objects.get(email="new@example.com").check_password("pw-Str0ng-12345")
