@@ -554,7 +554,7 @@ Each was a default chosen during planning; check them if you get the chance to t
 Suggested stack: Django + Django templates + HTMX for in-place updates (swap, score entry) + a simple CSS framework. No separate front end needed.
 
 - [x] Models and migrations for the ERD (Section 7); Django admin registered for quick data entry
-- [ ] Scheduler module (pure Python, no Django imports) + unit tests T1–T9
+- [x] Scheduler module (pure Python, no Django imports) + unit tests T1–T9
 - [ ] Auth: login, invite token with "Copy invite link", set password, password reset, Admin vs Player permissions
 - [ ] P2 My Events with empty state
 - [ ] P3 wizard steps 1–5 for leagues, saving a draft after each step; games-per-team grid with live summary
