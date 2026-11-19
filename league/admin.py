@@ -1,6 +1,9 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.forms import BaseInlineFormSet
 from django.core.exceptions import ValidationError
+
+from league.scheduling import generate_event
+from scheduler import ScheduleError
 
 from league.models import (
     Division,
@@ -68,6 +71,21 @@ class EventAdmin(admin.ModelAdmin):
     list_display = ("name", "type", "status", "start_date", "courts")
     list_filter = ("type", "status")
     inlines = [DivisionInline, WeekInline]
+    actions = ["generate_schedule"]
+
+    @admin.action(description="Generate schedule")
+    def generate_schedule(self, request, queryset):
+        for event in queryset:
+            try:
+                schedule = generate_event(event)
+            except ScheduleError as error:
+                self.message_user(request, f"{event.name}: {error}", messages.ERROR)
+            else:
+                self.message_user(
+                    request,
+                    f"Generated {len(schedule.matches)} games for {event.name}.",
+                    messages.SUCCESS,
+                )
 
 
 @admin.register(Division)
