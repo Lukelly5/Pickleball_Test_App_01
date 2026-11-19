@@ -1,0 +1,120 @@
+from datetime import date
+
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from accounts.models import Organization, User
+from league.models import Division, Event, Flight, Player, Team, TeamMember
+from league.scheduling import generate_event
+
+ORG_NAME = "Waco Regional"
+ADMIN_EMAIL = "admin@example.com"
+ADMIN_PASSWORD = "pickleball"
+
+FIRST_NAMES = [
+    "Alex", "Blake", "Casey", "Drew", "Emery", "Finn", "Gray", "Harper", "Indy", "Jordan",
+    "Kai", "Logan", "Morgan", "Nico", "Owen", "Parker", "Quinn", "Riley", "Sam", "Taylor",
+]
+LAST_NAMES = [
+    "Adams", "Brooks", "Carter", "Diaz", "Ellis", "Foster", "Grant", "Hayes", "Ingram", "Jensen",
+    "Keller", "Lopez", "Mercer", "Nolan", "Ortiz", "Patel", "Reed", "Shaw", "Turner", "Vega",
+]
+TEAM_NAMES = [
+    "Dink Dynasty", "Kitchen Crashers", "Net Ninjas", "Paddle Pals",
+    "Smash Brothers", "Lob Squad", "Drop Shot Dream", "Baseline Bandits",
+]
+
+# (level, men's teams, mixed teams)
+LEAGUE_DIVISIONS = [
+    (Division.Level.BEGINNER, 4, 4),
+    (Division.Level.INTERMEDIATE, 5, 5),
+    (Division.Level.ADVANCED, 6, 6),
+]
+
+
+class Command(BaseCommand):
+    help = "Create demo data: a 6-flight league and an 8-team tournament."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reset", action="store_true", help="Delete the demo data first and rebuild it."
+        )
+
+    def handle(self, *args, **options):
+        with transaction.atomic():
+            existing = Organization.objects.filter(name=ORG_NAME)
+            if existing.exists():
+                if not options["reset"]:
+                    self.stdout.write("Demo data already exists. Use --reset to rebuild it.")
+                    return
+                existing.delete()
+                User.objects.filter(email=ADMIN_EMAIL).delete()
+            self._seed()
+
+    def _seed(self):
+        org = Organization.objects.create(name=ORG_NAME)
+        User.objects.create_user(
+            ADMIN_EMAIL,
+            ADMIN_PASSWORD,
+            organization=org,
+            is_admin=True,
+            is_staff=True,
+            is_superuser=True,
+        )
+        self._player_count = 0
+        self._org = org
+
+        league = Event.objects.create(
+            organization=org,
+            name="Spring Tuesday League",
+            type=Event.Type.LEAGUE,
+            start_date=date(2027, 3, 2),
+            courts=6,
+        )
+        league.set_week_count(4)
+        for level, mens, mixed in LEAGUE_DIVISIONS:
+            division = Division.objects.create(event=league, level=level)
+            mens_players = self._flight(division, Flight.Format.MENS, mens, [2, 2, 2, 2])
+            # One man also plays Mixed, so the demo shows a player on two flights.
+            shared = mens_players[0]
+            self._flight(division, Flight.Format.MIXED, mixed, [2, 2, 2, 2], reuse=[shared])
+
+        tournament = Event.objects.create(
+            organization=org,
+            name="March Madness Shootout",
+            type=Event.Type.TOURNAMENT,
+            start_date=date(2027, 3, 13),
+            courts=4,
+            window_minutes=120,
+            game_minutes=15,
+        )
+        tournament.set_week_count(1)
+        division = Division.objects.create(event=tournament, level=Division.Level.INTERMEDIATE)
+        self._flight(division, Flight.Format.MIXED, 8, [7])
+
+        games = sum(len(generate_event(e).matches) for e in (league, tournament))
+        self.stdout.write(
+            f"Seeded 2 events, 7 flights, {games} games. "
+            f"Log in at /admin/ as {ADMIN_EMAIL} / {ADMIN_PASSWORD}"
+        )
+
+    def _new_player(self):
+        i = self._player_count
+        self._player_count += 1
+        name = f"{FIRST_NAMES[i % len(FIRST_NAMES)]} {LAST_NAMES[(i // len(FIRST_NAMES)) % len(LAST_NAMES)]}"
+        return Player.objects.create(organization=self._org, name=name)
+
+    def _flight(self, division, fmt, team_count, games, reuse=()):
+        """Create a flight of two-player teams; returns every player used."""
+        flight = Flight.objects.create(
+            division=division, format=fmt, games_per_team_by_week=games
+        )
+        reuse = list(reuse)
+        used = []
+        for n in range(team_count):
+            team = Team.objects.create(flight=flight, name=TEAM_NAMES[n])
+            for _ in range(2):
+                player = reuse.pop(0) if reuse else self._new_player()
+                TeamMember.objects.create(team=team, player=player)
+                used.append(player)
+        return used

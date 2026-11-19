@@ -553,7 +553,7 @@ Each was a default chosen during planning; check them if you get the chance to t
 
 Suggested stack: Django + Django templates + HTMX for in-place updates (swap, score entry) + a simple CSS framework. No separate front end needed.
 
-- [ ] Models and migrations for the ERD (Section 7); Django admin registered for quick data entry
+- [x] Models and migrations for the ERD (Section 7); Django admin registered for quick data entry
 - [ ] Scheduler module (pure Python, no Django imports) + unit tests T1–T9
 - [ ] Auth: login, invite token with "Copy invite link", set password, password reset, Admin vs Player permissions
 - [ ] P2 My Events with empty state
@@ -565,7 +565,7 @@ Suggested stack: Django + Django templates + HTMX for in-place updates (swap, sc
 - [ ] P7 Teams tab with withdraw
 - [ ] P9 Players directory, P10 Admins, P11 My Games
 - [ ] Tournament variant of the wizard with fit check (only after the league path works end to end)
-- [ ] Seed script: one league (3 divisions × 2 flights, 4–6 teams each, 4 weeks) and one tournament, so the demo never starts empty
+- [x] Seed script: one league (3 divisions × 2 flights, 4–6 teams each, 4 weeks) and one tournament, so the demo never starts empty
 
 ### Phase 2–3 hooks already in the design
 
