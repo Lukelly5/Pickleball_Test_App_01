@@ -425,12 +425,12 @@ Fill in the bodies marked with comments so they assert what the names say.
 - Produces: `python manage.py seed_demo [--reset]`.
 
 Demo contents (fixed, so the tests can count them):
-- Organization `"Waco Regional"`. User `admin@example.com`, password `pickleball`, `is_admin`, `is_staff` and `is_superuser` all true, in that org.
+- Organization `"Waco Regional (Demo)"` (never the real facility's name). Refuses to run unless `settings.DEBUG` is on or `--force` is given (stderr `seed_demo only runs with DEBUG on. Use --force to run it anyway.`, then `CommandError`). User `admin@example.com`, password `pickleball`, `is_admin`, `is_staff` and `is_superuser` all true, in that org.
 - League `"Spring Tuesday League"`: start 2027-03-02 (a Tuesday), 4 weeks, 6 courts, left as `draft` (publishing comes in a later plan). Divisions Beginner, Intermediate, Advanced, each with Men's and Mixed flights. Team counts per flight, in that order: 4, 5, 6, 4, 5, 6. Games per team `[2, 2, 2, 2]`. Every team has two distinct players. In each division, one player is on both the Men's and the Mixed team (T5).
 - Tournament `"March Madness Shootout"`: 2027-03-13, 1 week, 4 courts, `window_minutes=120`, `game_minutes=15`. One Intermediate Mixed flight with 8 teams and games `[7]` (a full round robin: 28 games, 7 rounds, 105 minutes).
 - Both events are generated. Expected matches: league 4 weeks × 2 × (2+2+3+2+2+3) = 112, tournament 28, **total 140**.
 - Team and player names come from fixed lists in the command (no randomness).
-- If an Organization named "Waco Regional" already exists and `--reset` isn't given: print `Demo data already exists. Use --reset to rebuild it.` and change nothing. With `--reset`: delete that organization (cascades to its events and players) and the `admin@example.com` user, then rebuild.
+- If an Organization named "Waco Regional (Demo)" already exists and `--reset` isn't given: print `Demo data already exists. Use --reset to rebuild it.` and change nothing. With `--reset`: delete that organization (cascades to its events and players) and the `admin@example.com` user, then rebuild. An existing `admin@example.com` without the org is updated (password, flags, org) rather than recreated.
 - On success it prints `Seeded 2 events, 7 flights, 140 games. Log in at /admin/ as admin@example.com / pickleball`.
 - Runs inside one `transaction.atomic()`.
 

@@ -204,3 +204,71 @@ def test_admin_generate_action_shows_errors(admin_client):
         follow=True,
     )
     assert b"Spring Tuesday League: Add at least one flight before generating." in r.content
+
+
+def test_week_count_mismatch_singular():
+    event = t1_event()
+    event.set_week_count(2)
+    flight = event.divisions.get().flights.get()
+    flight.games_per_team_by_week = [2]
+    flight.save()
+    with pytest.raises(
+        ScheduleError, match="Intermediate Men's has games for 1 week but the event has 2 weeks."
+    ):
+        generate_event(event)
+    event.set_week_count(1)
+    flight.games_per_team_by_week = [2, 2]
+    flight.save()
+    with pytest.raises(
+        ScheduleError, match="Intermediate Men's has games for 2 weeks but the event has 1 week."
+    ):
+        generate_event(event)
+
+
+def test_week_numbers_with_a_gap_are_rejected():
+    event = t1_event()
+    event.weeks.get(number=2).delete()
+    flight = event.divisions.get().flights.get()
+    flight.games_per_team_by_week = [2, 2, 2]
+    flight.save()
+    with pytest.raises(
+        ScheduleError,
+        match="Spring Tuesday League's weeks must be numbered 1 to 3 with none missing.",
+    ):
+        generate_event(event)
+
+
+def test_invalid_games_list_is_rejected():
+    event = t1_event()
+    flight = event.divisions.get().flights.get()
+    flight.games_per_team_by_week = "22"
+    flight.save()
+    with pytest.raises(ScheduleError, match="Intermediate Men's has an invalid games-per-team list."):
+        generate_event(event)
+    for bad in ([2, -1, 2, 2], [2, "2", 2, 2], [2, True, 2, 2]):
+        flight.games_per_team_by_week = bad
+        flight.save()
+        with pytest.raises(ScheduleError, match="invalid games-per-team list"):
+            generate_event(event)
+
+
+def test_generate_action_requires_change_permission(client):
+    from django.contrib.auth.models import Permission
+
+    from accounts.models import User
+
+    event = t1_event()
+    user = User.objects.create_user(
+        "viewer@example.com", "pw", organization=event.organization, is_staff=True
+    )
+    user.user_permissions.add(Permission.objects.get(codename="view_event"))
+    client.force_login(user)
+    r = client.get("/admin/league/event/")
+    assert r.status_code == 200
+    form = r.context["action_form"]
+    assert form is None or "generate_schedule" not in dict(form.fields["action"].choices)
+    client.post(
+        "/admin/league/event/",
+        {"action": "generate_schedule", "_selected_action": [event.pk]},
+    )
+    assert event_matches(event).count() == 0

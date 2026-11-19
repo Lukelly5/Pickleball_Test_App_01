@@ -56,6 +56,10 @@ def event_flights(event: Event, include_withdrawn: bool = False) -> list[schedul
     ]
 
 
+def _weeks(n: int) -> str:
+    return f"{n} week" if n == 1 else f"{n} weeks"
+
+
 def _check_ready(event: Event) -> None:
     flights = list(
         Flight.objects.filter(division__event=event)
@@ -79,13 +83,24 @@ def _check_ready(event: Event) -> None:
             raise scheduler.ScheduleError(
                 f"{team.name} needs exactly 2 players before generating."
             )
-    weeks = event.weeks.count()
+    for flight in flights:
+        games = flight.games_per_team_by_week
+        if not isinstance(games, list) or not all(
+            type(g) is int and g >= 0 for g in games
+        ):
+            raise scheduler.ScheduleError(f"{flight.name} has an invalid games-per-team list.")
+    numbers = sorted(event.weeks.values_list("number", flat=True))
+    weeks = len(numbers)
     for flight in flights:
         if len(flight.games_per_team_by_week) != weeks:
             raise scheduler.ScheduleError(
-                f"{flight.name} has games for {len(flight.games_per_team_by_week)} "
-                f"weeks but the event has {weeks}."
+                f"{flight.name} has games for {_weeks(len(flight.games_per_team_by_week))} "
+                f"but the event has {_weeks(weeks)}."
             )
+    if numbers != list(range(1, weeks + 1)):
+        raise scheduler.ScheduleError(
+            f"{event.name}'s weeks must be numbered 1 to {weeks} with none missing."
+        )
 
 
 def generate_event(event: Event) -> scheduler.Schedule:

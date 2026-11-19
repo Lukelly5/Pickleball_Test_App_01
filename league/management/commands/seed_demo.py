@@ -1,13 +1,14 @@
 from datetime import date
 
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from accounts.models import Organization, User
 from league.models import Division, Event, Flight, Player, Team, TeamMember
 from league.scheduling import generate_event
 
-ORG_NAME = "Waco Regional"
+ORG_NAME = "Waco Regional (Demo)"
 ADMIN_EMAIL = "admin@example.com"
 ADMIN_PASSWORD = "pickleball"
 
@@ -39,8 +40,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--reset", action="store_true", help="Delete the demo data first and rebuild it."
         )
+        parser.add_argument(
+            "--force", action="store_true", help="Run even when DEBUG is off."
+        )
 
     def handle(self, *args, **options):
+        if not settings.DEBUG and not options["force"]:
+            self.stderr.write("seed_demo only runs with DEBUG on. Use --force to run it anyway.")
+            raise CommandError("seed_demo refused to run with DEBUG off.")
         with transaction.atomic():
             existing = Organization.objects.filter(name=ORG_NAME)
             if existing.exists():
@@ -53,14 +60,15 @@ class Command(BaseCommand):
 
     def _seed(self):
         org = Organization.objects.create(name=ORG_NAME)
-        User.objects.create_user(
-            ADMIN_EMAIL,
-            ADMIN_PASSWORD,
-            organization=org,
-            is_admin=True,
-            is_staff=True,
-            is_superuser=True,
-        )
+        flags = {"organization": org, "is_admin": True, "is_staff": True, "is_superuser": True}
+        admin = User.objects.filter(email=ADMIN_EMAIL).first()
+        if admin is None:
+            User.objects.create_user(ADMIN_EMAIL, ADMIN_PASSWORD, **flags)
+        else:
+            for field, value in flags.items():
+                setattr(admin, field, value)
+            admin.set_password(ADMIN_PASSWORD)
+            admin.save()
         self._player_count = 0
         self._org = org
 

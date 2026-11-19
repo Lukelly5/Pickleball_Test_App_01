@@ -73,7 +73,7 @@ class EventAdmin(admin.ModelAdmin):
     inlines = [DivisionInline, WeekInline]
     actions = ["generate_schedule"]
 
-    @admin.action(description="Generate schedule")
+    @admin.action(description="Generate schedule", permissions=["change"])
     def generate_schedule(self, request, queryset):
         for event in queryset:
             try:
