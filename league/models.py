@@ -160,7 +160,7 @@ class Division(models.Model):
         ]
 
     def __str__(self):
-        return self.get_level_display()
+        return f"{self.event.name}: {self.get_level_display()}"
 
 
 class Flight(models.Model):
@@ -261,7 +261,7 @@ class Week(models.Model):
         ]
 
     def __str__(self):
-        return f"Week {self.number}"
+        return f"{self.event.name} Week {self.number}"
 
 
 class Match(models.Model):
@@ -311,7 +311,10 @@ class Match(models.Model):
         ]
 
     def __str__(self):
-        return f"Round {self.round_no}, court {self.court_no}"
+        return (
+            f"Wk {self.week.number} R{self.round_no} C{self.court_no}: "
+            f"{self.team_a} v {self.team_b}"
+        )
 
     def clean(self):
         if not (self.flight_id and self.week_id):
