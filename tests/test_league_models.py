@@ -3,10 +3,11 @@ from datetime import date, timedelta
 import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import RestrictedError
 from django.utils import timezone
 
 from accounts.models import Organization
-from league.models import Event, Flight, Invite, Match, Team, TeamMember
+from league.models import Event, Flight, Invite, Match, Player, Team, TeamMember
 from tests.factories import add_flight, add_player, add_team, make_event
 
 pytestmark = pytest.mark.django_db
@@ -138,3 +139,23 @@ def test_deleting_event_removes_its_flights_teams_and_matches():
     assert not Team.objects.exists()
     assert not Match.objects.exists()
     assert not Event.objects.exists()
+
+
+def test_deleting_organization_cascades_everything():
+    event = make_event()
+    flight = add_flight(event)
+    a, b = add_team(flight, "A"), add_team(flight, "B")
+    make_match(flight, a, b).save()
+    event.organization.delete()
+    assert not Event.objects.exists()
+    assert not Player.objects.exists()
+    assert not Team.objects.exists()
+    assert not TeamMember.objects.exists()
+    assert not Match.objects.exists()
+
+
+def test_cannot_delete_player_on_a_team():
+    team = add_team(add_flight(make_event()), "Dinkers")
+    player = team.players.first()
+    with pytest.raises(RestrictedError):
+        player.delete()

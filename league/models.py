@@ -221,7 +221,7 @@ class Team(models.Model):
 
 class TeamMember(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="members")
-    player = models.ForeignKey(Player, on_delete=models.PROTECT)
+    player = models.ForeignKey(Player, on_delete=models.RESTRICT)
 
     class Meta:
         constraints = [
