@@ -2,9 +2,11 @@
 name = "pickleball-league-manager"
 version = "0.1.0"
 requires-python = ">=3.13"
+dependencies = ["django>=6.1,<6.2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+DJANGO_SETTINGS_MODULE = "config.settings"
 
 [dependency-groups]
-dev = ["pytest>=9"]
+dev = ["pytest>=9", "pytest-django>=4.14"]
