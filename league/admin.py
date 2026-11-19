@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.forms import BaseInlineFormSet
+from django.core.exceptions import ValidationError
 
 from league.models import (
     Division,
@@ -29,8 +31,26 @@ class TeamInline(admin.TabularInline):
     extra = 0
 
 
+class TwoPlayerFormSet(BaseInlineFormSet):
+    """Django admin does not pass validate_min/validate_max to inline
+    formsets, so enforce exactly two players here."""
+
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        count = sum(
+            1
+            for form in self.forms
+            if form.cleaned_data.get("player") and not form.cleaned_data.get("DELETE")
+        )
+        if count != 2:
+            raise ValidationError("A team needs exactly two players.")
+
+
 class TeamMemberInline(admin.TabularInline):
     model = TeamMember
+    formset = TwoPlayerFormSet
     min_num = 2
     max_num = 2
     validate_min = True
