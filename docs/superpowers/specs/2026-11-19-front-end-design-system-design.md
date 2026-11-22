@@ -1,7 +1,7 @@
 # Stryde Front End: Design System and App Frame
 
 **Date:** 2026-11-19
-**Status:** Draft for approval
+**Status:** Approved (2026-11-22)
 **Spec it builds on:** `Pickleball League Manager — PRD, ERD & Scheduling Spec.md` (PRD). Sections 2, 3 and 5 define roles, navigation, routes and page layouts. This doc doesn't change any of that. It defines how those pages look and the shared pieces they're built from.
 
 ## 1. Intent
