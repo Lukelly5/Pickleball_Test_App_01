@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load static %}
+{% comment %}
+Public frame (spec §6.4): auth pages, error pages, and later the share link. Logo only, no app nav.
+Blocks: public_header (defaults to the monogram), content.
+{% endcomment %}
+{% block body %}
+<header class="flex justify-center px-4 pt-10 pb-6">
+  {% block public_header %}
+  <a href="/" aria-label="Stryde home">
+    <img src="{% static 'brand/stryde-monogram.svg' %}" alt="Stryde" class="h-12 w-auto">
+  </a>
+  {% endblock %}
+</header>
+<main class="mx-auto w-full max-w-md px-4 pb-16">
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}

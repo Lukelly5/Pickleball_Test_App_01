@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static ui %}
+{% comment %}
+Logged-in frame (spec §6.4). Laptop (md and up): top bar. Phone: monogram header + bottom tab bar.
+Blocks: page_title, page_meta, page_actions, content.
+{% endcomment %}
+{% block body %}
+{% url 'logout' as logout_url %}
+<header data-nav="top" class="hidden md:flex sticky top-0 z-40 h-16 items-center gap-8 border-b border-border bg-card px-6">
+  <a href="/" class="shrink-0" aria-label="Stryde home">
+    <img src="{% static 'brand/stryde-logo.svg' %}" alt="Stryde" class="h-8 w-auto">
+  </a>
+  <nav aria-label="Main" class="flex h-full items-stretch gap-6">
+    {% for link in nav.top %}
+    <a href="{{ link.url }}" class="flex items-center border-b-2 text-sm font-semibold {% if link.active %}border-brand text-brand{% else %}border-transparent text-ink/70 hover:text-ink{% endif %}"{% if link.active %} aria-current="page"{% endif %}>{{ link.label }}</a>
+    {% endfor %}
+  </nav>
+  <div id="account-menu" class="dropdown-menu ml-auto">
+    <button type="button" id="account-menu-trigger" aria-haspopup="menu" aria-controls="account-menu-menu" aria-expanded="false" class="btn" data-variant="ghost">
+      {% icon "user-round" class="size-4" %}
+      <span class="max-w-48 truncate">{{ user.get_short_name|default:user.email }}</span>
+    </button>
+    <div id="account-menu-popover" data-popover aria-hidden="true" data-align="end" class="min-w-48">
+      <div role="menu" id="account-menu-menu" aria-labelledby="account-menu-trigger">
+        {% if nav.account %}
+        <a role="menuitem" href="{{ nav.account.url }}">{% icon "user-round" class="size-4" %} Account</a>
+        {% endif %}
+        {% if logout_url %}
+        <form method="post" action="{{ logout_url }}">{% csrf_token %}
+          <button type="submit" role="menuitem" class="w-full">{% icon "log-out" class="size-4" %} Log out</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</header>
+
+<header class="md:hidden flex h-14 items-center border-b border-border bg-card px-4">
+  <a href="/" aria-label="Stryde home">
+    <img src="{% static 'brand/stryde-monogram.svg' %}" alt="Stryde" class="h-8 w-auto">
+  </a>
+</header>
+
+<main class="mx-auto w-full max-w-[1200px] px-4 pt-5 pb-24 md:px-6 md:pt-8 md:pb-10">
+  <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <h1 class="text-[22px] font-extrabold leading-tight text-ink md:text-[28px]">{% block page_title %}{% endblock %}</h1>
+      <p class="mt-1 text-sm text-muted-foreground">{% block page_meta %}{% endblock %}</p>
+    </div>
+    <div class="flex items-center gap-2">{% block page_actions %}{% endblock %}</div>
+  </div>
+  {% block content %}{% endblock %}
+</main>
+
+<nav data-nav="tabs" aria-label="Tabs" class="md:hidden fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
+  {% for link in nav.tabs %}
+  <a href="{{ link.url }}" class="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-semibold {% if link.active %}text-brand{% else %}text-ink/60{% endif %}"{% if link.active %} aria-current="page"{% endif %}>
+    {% icon link.icon class="size-5" %}
+    <span>{{ link.label }}</span>
+  </a>
+  {% endfor %}
+  {% if nav.more %}
+  <div id="more-menu" data-nav="more" class="dropdown-menu flex flex-1">
+    <button type="button" id="more-menu-trigger" aria-haspopup="menu" aria-controls="more-menu-menu" aria-expanded="false" class="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-semibold text-ink/60">
+      {% icon "ellipsis" class="size-5" %}
+      <span>More</span>
+    </button>
+    <div id="more-menu-popover" data-popover aria-hidden="true" data-side="top" data-align="end" class="min-w-52">
+      <div role="menu" id="more-menu-menu" aria-labelledby="more-menu-trigger">
+        {% for link in nav.more %}
+        <a role="menuitem" href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{% icon link.icon class="size-4" %} {{ link.label }}</a>
+        {% endfor %}
+        {% if logout_url %}
+        <form method="post" action="{{ logout_url }}">{% csrf_token %}
+          <button type="submit" role="menuitem" class="w-full">{% icon "log-out" class="size-4" %} Log out</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</nav>
+{% endblock %}

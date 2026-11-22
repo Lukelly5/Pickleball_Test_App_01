@@ -1,0 +1,5 @@
+{% extends "base_public.html" %}
+{% block title %}No access{% endblock %}
+{% block content %}
+{% include "components/error_state.html" with title="No access" message="You don't have access to this page." only %}
+{% endblock %}
