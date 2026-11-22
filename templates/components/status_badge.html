@@ -1,0 +1,2 @@
+{% comment %}Status badge (spec §6.5). Params: value, label. Teal fill carries Indigo text.{% endcomment %}
+<span data-status="{{ value }}" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap {% if value == 'draft' %}bg-warn-bg text-warn{% elif value == 'published' %}bg-progress text-ink{% else %}bg-muted text-muted-foreground{% endif %}">{{ label }}</span>

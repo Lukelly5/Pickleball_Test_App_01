@@ -1,0 +1,9 @@
+{% load ui %}
+{% comment %}Empty state (spec §6.5). Params: icon, message, action_url, action_label.{% endcomment %}
+<div class="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+  <span class="flex size-12 items-center justify-center rounded-full bg-accent text-brand">{% icon icon class="size-6" %}</span>
+  <p class="max-w-sm text-sm text-muted-foreground">{{ message }}</p>
+  {% if action_url %}
+  <a href="{{ action_url }}" class="btn mt-1">{% icon "plus" class="size-4" %} {{ action_label }}</a>
+  {% endif %}
+</div>
