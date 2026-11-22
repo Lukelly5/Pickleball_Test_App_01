@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'league',
+    'django_tailwind_cli',
+    'ui',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -120,6 +122,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Tailwind (django-tailwind-cli): source lives outside STATICFILES_DIRS, output is built.
+TAILWIND_CLI_VERSION = '4.3.5'
+TAILWIND_CLI_SRC_CSS = 'frontend/stryde.css'
+TAILWIND_CLI_DIST_CSS = 'css/stryde.css'
 
 
 # Email

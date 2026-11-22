@@ -8,3 +8,7 @@ db.sqlite3
 # Design reference material (not shipped)
 design_ideas/
 .superpowers/
+
+# Built by `manage.py tailwind build`
+static/css/stryde.css
+.django_tailwind_cli/

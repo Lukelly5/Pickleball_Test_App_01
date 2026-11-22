@@ -1,0 +1,75 @@
+/* Stryde theme: the one file that holds the brand (spec §6.1). */
+@import "tailwindcss";
+@import "./vendor/basecoat-1.1.0.css";
+
+@source "../templates";
+
+@theme {
+  --color-ink: #0B1A4A;
+  --color-brand: #0B3DCC;
+  --color-progress: #14E2B8;
+  --color-action: #FF7A3D;
+  --color-surface: #F6F8FC;
+  --color-warn: #8A5A00;
+  --color-warn-bg: #FFF4E0;
+  --color-danger: #E5484D;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Montserrat", "Inter", ui-sans-serif, sans-serif;
+  --shadow-card: 0 1px 3px rgb(11 26 74 / .08);
+}
+
+/* Basecoat's variables mapped onto Stryde. Coral (primary) carries Indigo text: contrast rule. */
+:root {
+  --background: #f6f8fc;
+  --foreground: #0b1a4a;
+  --card: #ffffff;
+  --card-foreground: #0b1a4a;
+  --popover: #ffffff;
+  --popover-foreground: #0b1a4a;
+  --primary: #ff7a3d;
+  --primary-foreground: #0b1a4a;
+  --secondary: #0b3dcc;
+  --secondary-foreground: #ffffff;
+  --muted: #eef2f9;
+  --muted-foreground: #5a6480;
+  --accent: #e8eefc;
+  --accent-foreground: #0b3dcc;
+  --destructive: #e5484d;
+  --border: #e3e8f2;
+  --input: #e3e8f2;
+  --ring: #0b3dcc;
+  --radius: 0.75rem;
+}
+
+@layer components {
+  .btn,
+  [class*="btn-"] {
+    border-radius: 9999px;
+  }
+
+  .card {
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .input,
+  .form input:not([type="checkbox"], [type="radio"]),
+  .form select,
+  .form textarea {
+    border-radius: 10px;
+  }
+
+  h1,
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Toasts: bottom of the screen on phones, top-right from md up. */
+  @media (width >= 48rem) {
+    .toaster {
+      top: 0;
+      bottom: auto;
+      flex-direction: column;
+    }
+  }
+}
