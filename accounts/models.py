@@ -20,6 +20,13 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+    def get_by_natural_key(self, email):
+        """Log in by email whatever its letter case; an exact match wins if two differ only by case."""
+        matches = list(self.filter(email__iexact=email)[:2])
+        if len(matches) == 1:
+            return matches[0]
+        return self.get(email=email)
+
     def create_superuser(self, email, password, **extra):
         extra["is_staff"] = True
         extra["is_superuser"] = True

@@ -1,0 +1,22 @@
+{% extends "base_app.html" %}
+{% block title %}Account{% endblock %}
+{% block page_title %}Account{% endblock %}
+{% block page_meta %}{{ user.email }}{% endblock %}
+{% block content %}
+<div class="grid max-w-xl gap-4">
+  <div class="card px-5 py-6">
+    <h2 class="font-display text-lg font-bold text-ink">Change password</h2>
+    <form method="post" class="form mt-4 grid gap-5" novalidate>
+      {% csrf_token %}
+      {% include "components/form_field.html" with field=form.old_password only %}
+      {% include "components/form_field.html" with field=form.new_password1 only %}
+      {% include "components/form_field.html" with field=form.new_password2 only %}
+      <div><button type="submit" class="btn">Change password</button></div>
+    </form>
+  </div>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn w-full md:w-auto" data-variant="outline">Log out</button>
+  </form>
+</div>
+{% endblock %}
