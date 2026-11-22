@@ -1,9 +1,15 @@
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
-from django.shortcuts import redirect
+from django.contrib.auth.forms import SetPasswordForm
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 
+from league.models import Invite
+
 from .forms import EmailLoginForm
+from .invites import InviteError, accept_invite, check_invite
+from .models import User
 from .roles import role_of
 
 
@@ -43,3 +49,27 @@ class AccountView(auth_views.PasswordChangeView):
 class PasswordResetView(auth_views.PasswordResetView):
     email_template_name = "registration/password_reset_email.txt"
     subject_template_name = "registration/password_reset_subject.txt"
+
+
+def invite_accept(request, token):
+    """P1 accept invite: choose a password, then land on your home page."""
+    invite = get_object_or_404(Invite.objects.select_related("organization"), token=token)
+    context = {"invite": invite, "error": None, "form": None}
+    try:
+        check_invite(invite)
+    except InviteError as error:
+        context["error"] = str(error)
+        return render(request, "accounts/invite_accept.html", context)
+
+    form = SetPasswordForm(User(email=invite.email), request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            user = accept_invite(token, form.cleaned_data["new_password1"])
+        except InviteError as error:
+            context["error"] = str(error)
+            return render(request, "accounts/invite_accept.html", context)
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        messages.success(request, "Welcome to Stryde.")
+        return redirect("home")
+    context["form"] = form
+    return render(request, "accounts/invite_accept.html", context)

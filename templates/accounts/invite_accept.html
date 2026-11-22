@@ -1,0 +1,24 @@
+{% extends "base_public.html" %}
+{% block title %}Join Stryde{% endblock %}
+{% block content %}
+<div class="card px-6 py-8">
+  {% if error %}
+  <h1 class="text-2xl font-extrabold text-ink">Can't use this invite</h1>
+  <p class="mt-2 text-sm text-muted-foreground">{{ error }}</p>
+  <a href="{% url 'login' %}" class="btn mt-6" data-variant="outline">Log in</a>
+  {% else %}
+  <h1 class="text-2xl font-extrabold text-ink">Join Stryde</h1>
+  <p class="mt-1 text-sm text-muted-foreground">{{ invite.organization.name }} invited you. Choose a password to finish.</p>
+  <form method="post" class="form mt-6 grid gap-5" novalidate>
+    {% csrf_token %}
+    <div class="grid gap-2">
+      <label for="invite-email" class="text-sm font-semibold text-ink">Email</label>
+      <input id="invite-email" type="email" value="{{ invite.email }}" readonly class="input bg-muted">
+    </div>
+    {% include "components/form_field.html" with field=form.new_password1 only %}
+    {% include "components/form_field.html" with field=form.new_password2 only %}
+    <button type="submit" class="btn w-full" data-size="lg">Create account</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
