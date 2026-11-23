@@ -1,0 +1,5 @@
+{% extends "base_public.html" %}
+{% block title %}Page not found{% endblock %}
+{% block content %}
+{% include "components/error_state.html" with title="Page not found" message="We couldn't find that page." only %}
+{% endblock %}

@@ -1,0 +1,5 @@
+{% extends "base_public.html" %}
+{% block title %}Something went wrong{% endblock %}
+{% block content %}
+{% include "components/error_state.html" with title="Something went wrong" message="Something went wrong loading this page. Refresh to try again." only %}
+{% endblock %}

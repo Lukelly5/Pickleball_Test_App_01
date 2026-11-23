@@ -1,0 +1,8 @@
+{% load ui %}
+{% comment %}Error state (spec §6.5). Params: title, message.{% endcomment %}
+<div class="card flex flex-col items-center gap-3 px-6 py-10 text-center">
+  <span class="flex size-12 items-center justify-center rounded-full bg-warn-bg text-warn">{% icon "triangle-alert" class="size-6" %}</span>
+  <h1 class="text-xl font-extrabold text-ink">{{ title }}</h1>
+  <p class="text-sm text-muted-foreground">{{ message }}</p>
+  <a href="/" class="btn mt-2" data-variant="outline">Go to Stryde home</a>
+</div>

@@ -1,0 +1,35 @@
+{% extends "base_app.html" %}
+{% load ui %}
+{% block title %}My Events{% endblock %}
+{% block page_title %}My Events{% endblock %}
+{% block page_actions %}
+{% url 'event_create' as create_url %}
+{% if create_url and events %}<a href="{{ create_url }}" class="btn">{% icon "plus" class="size-4" %} Create</a>{% endif %}
+{% endblock %}
+{% block content %}
+{% url 'event_create' as create_url %}
+{% if events %}
+<div class="card overflow-hidden p-0">
+  <table class="data-table">
+    <thead>
+      <tr><th>Name</th><th>Type</th><th>Dates</th><th>Flights</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for event in events %}
+      <tr>
+        <td data-label="Name" class="font-semibold text-ink">
+          {% if event.link %}<a href="{{ event.link }}" class="hover:text-brand">{{ event.name }}</a>{% else %}{{ event.name }}{% endif %}
+        </td>
+        <td data-label="Type">{{ event.get_type_display }}</td>
+        <td data-label="Dates">{{ event.dates }}</td>
+        <td data-label="Flights">{{ event.flight_count }}</td>
+        <td data-label="Status">{% include "components/status_badge.html" with value=event.status label=event.get_status_display only %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+{% include "components/empty_state.html" with icon="calendar-plus" message="No events yet. Create your first league or tournament." action_url=create_url action_label="Create" only %}
+{% endif %}
+{% endblock %}
