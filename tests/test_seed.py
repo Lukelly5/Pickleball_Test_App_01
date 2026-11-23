@@ -45,7 +45,7 @@ def test_seed_twice_does_not_duplicate(capsys):
 def test_seed_reset_rebuilds():
     call_command("seed_demo")
     call_command("seed_demo", "--reset")
-    assert Event.objects.count() == 2 and Match.objects.count() == 140 and User.objects.count() == 1
+    assert Event.objects.count() == 2 and Match.objects.count() == 140 and User.objects.count() == 2
 
 
 def test_seed_does_not_touch_a_real_organization():
@@ -79,3 +79,23 @@ def test_seed_adopts_existing_admin_user():
     assert user.check_password("pickleball")
     assert user.is_admin and user.is_staff and user.is_superuser
     assert user.organization.name == "Waco Regional (Demo)"
+
+
+def test_seed_creates_player_login_on_two_flights():
+    call_command("seed_demo")
+    user = User.objects.get(email="player@example.com")
+    assert not user.is_admin and user.check_password("pickleball")
+    assert user.player.teams.count() == 2
+    assert user.organization.name == "Waco Regional (Demo)"
+
+
+def test_seed_league_published_tournament_draft():
+    call_command("seed_demo")
+    assert Event.objects.get(name="Spring Tuesday League").status == "published"
+    assert Event.objects.get(name="March Madness Shootout").status == "draft"
+
+
+def test_seed_reset_removes_player_login_first():
+    call_command("seed_demo")
+    call_command("seed_demo", "--reset")
+    assert User.objects.filter(email="player@example.com").count() == 1

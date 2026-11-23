@@ -11,6 +11,7 @@ from league.scheduling import generate_event
 ORG_NAME = "Waco Regional (Demo)"
 ADMIN_EMAIL = "admin@example.com"
 ADMIN_PASSWORD = "pickleball"
+PLAYER_EMAIL = "player@example.com"
 
 FIRST_NAMES = [
     "Alex", "Blake", "Casey", "Drew", "Emery", "Finn", "Gray", "Harper", "Indy", "Jordan",
@@ -55,7 +56,7 @@ class Command(BaseCommand):
                     self.stdout.write("Demo data already exists. Use --reset to rebuild it.")
                     return
                 existing.delete()
-                User.objects.filter(email=ADMIN_EMAIL).delete()
+                User.objects.filter(email__in=[ADMIN_EMAIL, PLAYER_EMAIL]).delete()
             self._seed()
 
     def _seed(self):
@@ -86,6 +87,8 @@ class Command(BaseCommand):
             # One man also plays Mixed, so the demo shows a player on two flights.
             shared = mens_players[0]
             self._flight(division, Flight.Format.MIXED, mixed, [2, 2, 2, 2], reuse=[shared])
+            if level == Division.Level.INTERMEDIATE:
+                self._player_login(shared)
 
         tournament = Event.objects.create(
             organization=org,
@@ -101,10 +104,27 @@ class Command(BaseCommand):
         self._flight(division, Flight.Format.MIXED, 8, [7])
 
         games = sum(len(generate_event(e).matches) for e in (league, tournament))
+        # The league is published so the player login has games to see; the tournament stays a draft.
+        league.status = Event.Status.PUBLISHED
+        league.save(update_fields=["status"])
         self.stdout.write(
-            f"Seeded 2 events, 7 flights, {games} games. "
-            f"Log in at /admin/ as {ADMIN_EMAIL} / {ADMIN_PASSWORD}"
+            f"Seeded 2 events, 7 flights, {games} games. Log in at /login/ as "
+            f"{ADMIN_EMAIL} (admin) or {PLAYER_EMAIL} (player), password {ADMIN_PASSWORD}"
         )
+
+    def _player_login(self, player):
+        """Give one demo player (on two flights) an email and a player login."""
+        player.email = PLAYER_EMAIL
+        user = User.objects.filter(email=PLAYER_EMAIL).first()
+        if user is None:
+            user = User.objects.create_user(PLAYER_EMAIL, ADMIN_PASSWORD, organization=self._org)
+        else:
+            user.organization = self._org
+            user.is_admin = user.is_staff = user.is_superuser = False
+            user.set_password(ADMIN_PASSWORD)
+            user.save()
+        player.user = user
+        player.save(update_fields=["email", "user"])
 
     def _new_player(self):
         i = self._player_count
