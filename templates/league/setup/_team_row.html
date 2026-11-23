@@ -1,5 +1,6 @@
 {% comment %}Inline add/edit team row. Lives inside the step form, so Save is a submit button there.{% endcomment %}
 {% if form %}
+{% if oob %}<button type="submit" id="default-submit" name="action" value="save_team" class="sr-only" tabindex="-1" aria-hidden="true" hx-swap-oob="true">Save team</button>{% endif %}
 <div class="grid gap-4 rounded-[10px] border border-border bg-accent/30 p-4" id="team-row">
   {% include "components/form_errors.html" with form=form only %}
   <input type="hidden" name="flight" value="{{ flight.pk }}">

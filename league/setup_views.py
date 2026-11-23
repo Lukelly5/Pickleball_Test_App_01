@@ -228,6 +228,12 @@ def _flight_notes(flight: Flight) -> list[str]:
     return notes
 
 
+def _team_of(flight: Flight, value) -> Team | None:
+    """The flight's team for a posted or queried pk; junk means no team."""
+    value = str(value or "")
+    return flight.teams.filter(pk=int(value)).first() if value.isdigit() else None
+
+
 def _chosen_flight(request, flights: list[Flight]) -> Flight | None:
     wanted = request.POST.get("flight") or request.GET.get("flight") or ""
     return next((f for f in flights if str(f.pk) == wanted), flights[0] if flights else None)
@@ -264,7 +270,7 @@ def teams_step(request, event: Event, step: str = "teams"):
     htmx = bool(request.headers.get("HX-Request"))
 
     def page(**extra):
-        context = {"flights": [], "has_flights": bool(flights)}
+        context = {"flights": [], "has_flights": bool(flights), "oob": htmx}
         if flight is not None:
             context["flights"] = [
                 {
@@ -290,7 +296,7 @@ def teams_step(request, event: Event, step: str = "teams"):
         return redirect(destination(event, step, request.POST.get("nav", "next")))
     if flight is None:
         return redirect(step_url(event, step))
-    team = flight.teams.filter(pk=request.POST.get("team") or 0).first()
+    team = _team_of(flight, request.POST.get("team"))
     form = TeamForm(request.POST, flight=flight, team=team)
     if form.is_valid():
         try:
@@ -318,11 +324,15 @@ def event_team_row(request, pk):
     flight = _chosen_flight(request, _event_flights(event))
     if flight is None:
         raise Http404
-    team = flight.teams.filter(pk=request.GET.get("team") or 0).first()
+    team = _team_of(flight, request.GET.get("team"))
     context = _team_context(
         request, event, flight, form=TeamForm(flight=flight, team=team), team=team
     )
-    return render(request, "league/setup/_team_row.html", {"event": event, **context})
+    return render(
+        request,
+        "league/setup/_team_row.html",
+        {"event": event, "oob": bool(request.headers.get("HX-Request")), **context},
+    )
 
 
 @admin_required

@@ -1,4 +1,5 @@
 <div id="team-panel" class="grid gap-4">
+  {% if oob and not form %}<button type="submit" id="default-submit" name="nav" value="next" class="sr-only" tabindex="-1" aria-hidden="true" hx-swap-oob="true">Next</button>{% endif %}
   <div class="flex items-center justify-between gap-3">
     <h3 class="font-extrabold text-ink">{{ flight.name }}</h3>
     {% if not locked %}

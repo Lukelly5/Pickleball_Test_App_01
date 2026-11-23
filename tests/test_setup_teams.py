@@ -153,3 +153,29 @@ def test_enter_saves_the_open_team_row(client, setup):
     closed = client.get(url).content.decode()
     first = closed[closed.index('<form method="post" id="step-form"'):]
     assert 'value="next"' in first[first.index("<button"):].split(">", 1)[0]
+
+
+HX = {"HTTP_HX_REQUEST": "true"}
+
+
+def test_htmx_row_swaps_default_button_to_save(client, setup):
+    event, flight = setup
+    page = client.get(f"/events/{event.pk}/setup/teams/row/?flight={flight.pk}", **HX).content.decode()
+    button = page[page.index('id="default-submit"'):].split(">", 1)[0]
+    assert 'value="save_team"' in button and 'hx-swap-oob="true"' in button
+
+
+def test_htmx_save_puts_next_back(client, setup):
+    event, flight = setup
+    url = f"/events/{event.pk}/setup/teams/?flight={flight.pk}"
+    data = {"action": "save_team", "flight": flight.pk, "name": "Dinkers", "player1": "A One",
+            "player1_email": "", "player2": "B Two", "player2_email": ""}
+    page = client.post(url, data, **HX).content.decode()
+    button = page[page.index('id="default-submit"'):].split(">", 1)[0]
+    assert 'value="next"' in button and 'hx-swap-oob="true"' in button
+
+
+def test_non_integer_team_is_not_a_500(client, setup):
+    event, flight = setup
+    assert post_team(client, event, flight, team="abc").status_code == 200  # form error, no team created
+    assert client.get(f"/events/{event.pk}/setup/teams/row/?flight={flight.pk}&team=abc").status_code == 200
