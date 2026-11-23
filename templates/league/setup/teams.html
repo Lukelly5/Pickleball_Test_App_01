@@ -1,4 +1,5 @@
 {% extends "league/setup/_frame.html" %}
+{% block default_submit %}{% if form %}<button type="submit" name="action" value="save_team" class="sr-only" tabindex="-1" aria-hidden="true">Save team</button>{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block step_body %}
 {% if not has_flights %}
 {% url 'event_setup_step' event.pk 'flights' as flights_url %}

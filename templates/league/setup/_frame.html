@@ -5,7 +5,7 @@
 {% block content %}
 <form method="post" id="step-form" class="grid gap-5" novalidate>
   {% csrf_token %}
-  <button type="submit" name="nav" value="next" class="sr-only" tabindex="-1" aria-hidden="true">Next</button>
+  {% block default_submit %}<button type="submit" name="nav" value="next" class="sr-only" tabindex="-1" aria-hidden="true">Next</button>{% endblock %}
   {% include "components/stepper.html" with steps=steps form_id="step-form" current_number=step_number current_label=step_label count=step_count only %}
   {% if locked %}
   <p role="status" class="rounded-[10px] border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">Scores have been entered, so the setup is locked. Individual games can still be moved.</p>

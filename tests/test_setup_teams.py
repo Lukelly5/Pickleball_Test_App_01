@@ -141,3 +141,15 @@ def test_other_orgs_event_404(client, setup):
     other.organization = Organization.objects.create(name="Else")
     other.save()
     assert client.get(f"/events/{other.pk}/setup/teams/players/").status_code == 404
+
+
+def test_enter_saves_the_open_team_row(client, setup):
+    event, flight = setup
+    url = f"/events/{event.pk}/setup/teams/?flight={flight.pk}"
+    open_row = client.get(url + "&add=1").content.decode()
+    first = open_row[open_row.index('<form method="post" id="step-form"'):]
+    first = first[first.index("<button"):].split(">", 1)[0]
+    assert 'value="save_team"' in first
+    closed = client.get(url).content.decode()
+    first = closed[closed.index('<form method="post" id="step-form"'):]
+    assert 'value="next"' in first[first.index("<button"):].split(">", 1)[0]
