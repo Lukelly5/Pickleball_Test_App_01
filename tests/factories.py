@@ -6,6 +6,7 @@ from league.models import Division, Event, Flight, GameScore, Player, Team, Team
 
 def make_event(name="Spring Tuesday League", weeks=4, courts=2, **fields):
     org, _ = Organization.objects.get_or_create(name="Waco Regional")
+    fields.setdefault("type", Event.Type.LEAGUE)
     event = Event.objects.create(
         organization=org,
         name=name,

@@ -1,0 +1,31 @@
+{% extends "base_app.html" %}
+{% comment %}Wizard frame. Child pages fill step_body and (optionally) step_footer.{% endcomment %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block content %}
+<form method="post" id="step-form" class="grid gap-5" novalidate>
+  {% csrf_token %}
+  <button type="submit" name="nav" value="next" class="sr-only" tabindex="-1" aria-hidden="true">Next</button>
+  {% include "components/stepper.html" with steps=steps form_id="step-form" current_number=step_number current_label=step_label count=step_count only %}
+  {% if locked %}
+  <p role="status" class="rounded-[10px] border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">Scores have been entered, so the setup is locked. Individual games can still be moved.</p>
+  {% endif %}
+  {% if event.schedule_stale %}
+  <p role="status" class="rounded-[10px] border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">You changed the setup since the schedule was made. Regenerate to apply it.</p>
+  {% endif %}
+  <div class="card grid gap-5 p-6">
+    <h2 class="text-lg font-extrabold text-ink">{{ step_label }}</h2>
+    {% block step_body %}{% endblock %}
+  </div>
+  <div class="flex items-center justify-between gap-3">
+    {% block step_footer %}
+    {% if new and step == "basics" %}
+    <a href="{% url 'event_list' %}" class="btn" data-variant="outline">Cancel</a>
+    {% else %}
+    <button type="submit" name="nav" value="back" class="btn" data-variant="outline">Back</button>
+    {% endif %}
+    <button type="submit" name="nav" value="next" class="btn">Next</button>
+    {% endblock %}
+  </div>
+</form>
+{% endblock %}

@@ -1,13 +1,23 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Max, Min
+from django.db.models import Count, Exists, Max, Min, OuterRef
 from django.shortcuts import render
+from django.urls import reverse
 
 from accounts.permissions import admin_required
 from accounts.roles import player_for
 from ui.nav import optional_reverse
 
 from .display import date_range
-from .models import Event, Team
+from .models import Event, Match, Team
+
+
+def _row_link(event) -> str | None:
+    if event.status != Event.Status.DRAFT:
+        return optional_reverse("event_schedule", event.pk)
+    if event.type == Event.Type.LEAGUE:
+        setup = reverse("event_setup", args=[event.pk])
+        return (optional_reverse("event_preview", event.pk) or setup) if event.has_matches else setup
+    return optional_reverse("event_preview", event.pk)
 
 
 @admin_required
@@ -20,13 +30,13 @@ def event_list(request):
             first_date=Min("weeks__date"),
             last_date=Max("weeks__date"),
             flight_count=Count("divisions__flights", distinct=True),
+            has_matches=Exists(Match.objects.filter(flight__division__event=OuterRef("pk"))),
         )
         .order_by(*Event._meta.ordering)
     ) if org_id else []
     for event in events:
         event.dates = date_range(event.first_date or event.start_date, event.last_date)
-        page = "event_preview" if event.status == Event.Status.DRAFT else "event_schedule"
-        event.link = optional_reverse(page, event.pk)
+        event.link = _row_link(event)
     return render(
         request,
         "league/event_list.html",
