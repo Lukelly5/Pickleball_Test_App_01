@@ -1,5 +1,5 @@
 {% comment %}Form field (spec §6.5). Param: field. Label above, muted help, red errors under the field.{% endcomment %}
-<div class="grid gap-2">
+<div class="field gap-2">
   <label for="{{ field.id_for_label }}" class="text-sm font-semibold text-ink">{{ field.label }}</label>
   {{ field }}
   {% if field.help_text %}<div class="text-xs text-muted-foreground">{{ field.help_text|safe }}</div>{% endif %}

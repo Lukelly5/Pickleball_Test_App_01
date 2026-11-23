@@ -105,3 +105,10 @@ def test_account_changes_password(client, org):
         follow=True,
     )
     assert "Your password was changed." in response.content.decode()
+
+
+def test_form_inputs_sit_in_basecoat_field(client):
+    # Basecoat 1.1 styles only inputs that are direct children of .field; a bare input renders with no border.
+    html = client.get("/login/").content.decode()
+    assert '<div class="field' in html
+    assert html.count('<div class="field') == 2  # email and password

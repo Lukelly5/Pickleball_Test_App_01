@@ -52,10 +52,11 @@
     box-shadow: var(--shadow-card);
   }
 
+  /* Basecoat 1.1 styles inputs inside .field (see components/form_field.html) or with .input. */
   .input,
-  .form input:not([type="checkbox"], [type="radio"]),
-  .form select,
-  .form textarea {
+  .field > input:not([type="checkbox"], [type="radio"]),
+  .field > select,
+  .field > textarea {
     border-radius: 10px;
   }
 
