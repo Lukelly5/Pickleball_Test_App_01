@@ -3,9 +3,11 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import RestrictedError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 
 from accounts.permissions import admin_required
 
@@ -18,9 +20,10 @@ from .setup import (
     first_open_step,
     mark_stale,
     set_weeks,
+    sync_flights,
     step_done,
 )
-from .setup_forms import BasicsForm, ScoringForm
+from .setup_forms import BasicsForm, FlightsForm, ScoringForm
 
 
 def setup_event(request, pk: int) -> Event:
@@ -155,6 +158,51 @@ def scoring_step(request, event: Event, step: str = "scoring"):
     return render(request, template, frame_context(event, step, form=form, locked=locked))
 
 
+def flights_step(request, event: Event, step: str = "flights"):
+    template = "league/setup/flights.html"
+    locked = event.has_scores()
+    if request.method != "POST":
+        form = FlightsForm(event=event, locked=locked)
+        return render(request, template, frame_context(event, step, form=form, locked=locked))
+    form = FlightsForm(request.POST, event=event, locked=locked)
+    removing: list = []
+    if form.is_valid():
+        try:
+            with editing(event) as row:
+                removing = sync_flights(row, form.selected(), form.cleaned_data["confirm"])
+                if not removing:
+                    row.setup_step = max(row.setup_step, STEPS.index(step) + 1)
+                    row.save(update_fields=["setup_step"])
+        except SetupLocked as exc:
+            messages.error(request, str(exc))
+            return redirect(step_url(event, step))
+        except RestrictedError:
+            messages.error(
+                request, "Some of those flights have games that can't be removed. Nothing was changed."
+            )
+        else:
+            if not removing:
+                return redirect(destination(event, step, request.POST.get("nav", "next")))
+    # Flight names come from fixed choices (no user input), so marking them safe keeps the apostrophe literal.
+    warnings = [
+        mark_safe(f"Removing {flight} deletes its {n} {'team' if n == 1 else 'teams'}.")
+        for flight in removing
+        for n in [flight.teams.count()]
+    ]
+    return render(
+        request,
+        template,
+        frame_context(
+            event,
+            step,
+            form=form,
+            locked=locked,
+            warnings=warnings,
+            nav=request.POST.get("nav", "next"),
+        ),
+    )
+
+
 def placeholder_step(request, event: Event, step: str):
     """Stand-in until the step is built: navigation works, nothing is saved."""
     if request.method == "POST":
@@ -170,7 +218,7 @@ def placeholder_step(request, event: Event, step: str):
 STEP_VIEWS = {
     "basics": basics_step,
     "scoring": scoring_step,
-    "flights": placeholder_step,
+    "flights": flights_step,
     "teams": placeholder_step,
     "games": placeholder_step,
 }
