@@ -7,12 +7,16 @@ from django.db.models import Q, RestrictedError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+import scheduler
 from django.views.decorators.http import require_POST
 from django.utils.safestring import mark_safe
 
 from accounts.permissions import admin_required
+from ui.nav import optional_reverse
 
-from .models import Event, Flight, Player, Team
+from .models import Event, Flight, Match, Player, Team
+from .scheduling import generate_event
+from .setup_preview import plan_views
 from .setup import (
     active_teams,
     delete_team,
@@ -27,7 +31,15 @@ from .setup import (
     sync_flights,
     step_done,
 )
-from .setup_forms import BasicsForm, FlightsForm, ScoringForm, TeamForm, player_text
+from .setup_forms import (
+    PLAN_OPTIONS,
+    BasicsForm,
+    FlightsForm,
+    GamesForm,
+    ScoringForm,
+    TeamForm,
+    player_text,
+)
 
 
 def setup_event(request, pk: int) -> Event:
@@ -360,6 +372,155 @@ def player_search(request, pk):
     )
 
 
+def _cards(form: GamesForm, views, locked: bool) -> list[dict]:
+    """Template data per flight: plan radios and week cells (typed values when the form is bound)."""
+    by_flight = {v.flight.pk: v for v in views}
+    cards = []
+    for sub in form.forms:
+        view = by_flight[sub.flight.pk]
+        plan = sub["plan"].value() if form.bound else view.plan
+        seed = view.grid or [1] * sub.weeks
+        custom = plan == "custom"
+        cells = []
+        for week in range(1, sub.weeks + 1):
+            name = f"{sub.prefix}-w{week}"
+            if form.bound and custom and f"w{week}" in sub.fields:
+                value, error = sub[f"w{week}"].value(), "; ".join(sub[f"w{week}"].errors)
+            else:
+                value, error = seed[week - 1] if week <= len(seed) else 1, ""
+            shown = view.grid[week - 1] if week <= len(view.grid) else ""
+            cells.append({
+                "week": week, "name": name, "id": f"id_{name}", "value": value, "error": error,
+                "shown": shown, "empty": week in view.empty_weeks,
+            })
+        cards.append({
+            "view": view,
+            "plan_name": sub["plan"].html_name,
+            "options": [{"value": v, "label": label, "checked": v == plan} for v, label in PLAN_OPTIONS],
+            "plan_errors": sub["plan"].errors,
+            "cells": cells,
+            "inputs": custom and not locked and view.blocker is None,
+            "hidden": not locked and not (custom and view.blocker is None),
+        })
+    return cards
+
+
+def _games_context(event: Event, form: GamesForm, step: str = "games", **extra) -> dict:
+    locked = event.has_scores()
+    views, error = plan_views(event, form.valid_overrides())
+    return frame_context(
+        event,
+        step,
+        form=form,
+        locked=locked,
+        cards=_cards(form, views, locked),
+        dry_run_error=error,
+        has_matches=Match.objects.filter(flight__division__event=event).exists(),
+        **extra,
+    )
+
+
+def _save_games(event: Event, form: GamesForm) -> None:
+    """Store each flight's plan and grid under the event lock. Raises SetupLocked."""
+    with editing(event) as row:
+        before = {f.flight.pk: list(f.flight.games_per_team_by_week) for f in form.forms}
+        presets = False
+        for sub in form.forms:
+            plan, grid = sub.override()
+            flight = sub.flight
+            flight.games_plan = plan
+            if plan == "custom":
+                flight.games_per_team_by_week = grid
+            else:
+                presets = True
+            flight.save(update_fields=["games_plan", "games_per_team_by_week"])
+        if presets:
+            refresh_grids(row)
+        after = {
+            f.pk: list(f.games_per_team_by_week)
+            for f in Flight.objects.filter(division__event=row)
+        }
+        row.setup_step = max(row.setup_step, len(STEPS))
+        row.save(update_fields=["setup_step"])
+        if after != before:
+            mark_stale(row)
+
+
+def _locked_refusal(request, event: Event):
+    messages.error(request, str(SetupLocked()))
+    return redirect(step_url(event, "games"))
+
+
+def games_step(request, event: Event, step: str = "games"):
+    template = "league/setup/games.html"
+    if request.method != "POST":
+        return render(request, template, _games_context(event, GamesForm(event), step))
+    nav = request.POST.get("nav", "stay")
+    if event.has_scores():
+        if nav == "back" or nav.startswith("goto:"):  # Navigation is never blocked.
+            return redirect(destination(event, step, nav))
+        return _locked_refusal(request, event)
+    form = GamesForm(event, request.POST)
+    if form.is_valid():
+        try:
+            _save_games(event, form)
+        except SetupLocked as exc:
+            messages.error(request, str(exc))
+            return redirect(step_url(event, step))
+        if nav == "back" or nav.startswith("goto:"):
+            return redirect(destination(event, step, nav))
+        return render(request, template, _games_context(event, GamesForm(event), step))
+    return render(request, template, _games_context(event, form, step))
+
+
+@admin_required
+@require_POST
+def event_games_preview(request, pk):
+    event = setup_event(request, pk)
+    form = GamesForm(event, None if event.has_scores() else request.POST)
+    if not event.has_scores():
+        form.is_valid()
+    return render(request, "league/setup/_games_cards.html", _games_context(event, form))
+
+
+@admin_required
+@require_POST
+def event_generate(request, pk):
+    event = setup_event(request, pk)
+    template = "league/setup/games.html"
+    if event.has_scores():
+        return _locked_refusal(request, event)
+    form = GamesForm(event, request.POST)
+    if not form.is_valid():
+        return render(request, template, _games_context(event, form))
+    has_matches = Match.objects.filter(flight__division__event=event).exists()
+    if has_matches and request.POST.get("confirm") != "1":
+        return render(request, template, _games_context(event, form, confirm_needed=True))
+    try:
+        _save_games(event, form)
+    except SetupLocked as exc:
+        messages.error(request, str(exc))
+        return redirect(step_url(event, "games"))
+    fresh = GamesForm(event)
+    views, _ = plan_views(event)
+    blocker = next((v.blocker for v in views if v.blocker), None)
+    try:
+        if blocker:
+            raise scheduler.ScheduleError(blocker)
+        schedule = generate_event(event)
+    except scheduler.ScheduleError as exc:
+        messages.error(request, str(exc))
+        return render(request, template, _games_context(event, fresh))
+    games = len(schedule.matches)
+    weeks = event.weeks.count()
+    messages.success(
+        request,
+        f"Schedule drafted · {games} {'game' if games == 1 else 'games'} over "
+        f"{weeks} {'week' if weeks == 1 else 'weeks'}",
+    )
+    return redirect(optional_reverse("event_preview", event.pk) or reverse("event_list"))
+
+
 def placeholder_step(request, event: Event, step: str):
     """Stand-in until the step is built: navigation works, nothing is saved."""
     if request.method == "POST":
@@ -377,7 +538,7 @@ STEP_VIEWS = {
     "scoring": scoring_step,
     "flights": flights_step,
     "teams": teams_step,
-    "games": placeholder_step,
+    "games": games_step,
 }
 
 

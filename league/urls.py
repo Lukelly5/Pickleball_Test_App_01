@@ -6,6 +6,8 @@ urlpatterns = [
     path("events/", views.event_list, name="event_list"),
     path("events/new/", setup_views.event_create, name="event_create"),
     path("events/<int:pk>/setup/", setup_views.event_setup, name="event_setup"),
+    path("events/<int:pk>/setup/games/preview/", setup_views.event_games_preview, name="event_games_preview"),
+    path("events/<int:pk>/setup/games/generate/", setup_views.event_generate, name="event_generate"),
     path("events/<int:pk>/setup/teams/row/", setup_views.event_team_row, name="event_team_row"),
     path("events/<int:pk>/setup/teams/players/", setup_views.player_search, name="player_search"),
     path(

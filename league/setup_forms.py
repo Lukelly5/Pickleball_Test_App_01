@@ -5,7 +5,7 @@ from django.db import transaction
 from django.urls import reverse
 
 from .models import Division, Event, Flight, Player, Team, TeamMember
-from .setup import active_teams
+from .setup import active_teams, effective_plan, plan_grid
 
 
 class BasicsForm(forms.ModelForm):
@@ -216,3 +216,57 @@ class TeamForm(forms.Form):
                 if player.pk not in have:
                     TeamMember.objects.create(team=team, player=player)
         return team
+
+
+PLAN_OPTIONS = (("once", "once"), ("twice", "twice"), ("custom", "custom"))
+
+
+class FlightGamesForm(forms.Form):
+    """One flight's plan radio and, for the custom plan only, its per-week counts."""
+
+    plan = forms.ChoiceField(choices=PLAN_OPTIONS, widget=forms.RadioSelect)
+
+    def __init__(self, flight: Flight, weeks: int, data=None):
+        self.flight = flight
+        self.weeks = weeks
+        prefix = f"f{flight.pk}"
+        super().__init__(data, prefix=prefix, initial={"plan": self.resolved_plan()})
+        # Week counts only matter (and are only checked) for the custom plan.
+        if data is not None and data.get(f"{prefix}-plan") == "custom":
+            for week in range(1, weeks + 1):
+                self.fields[f"w{week}"] = forms.IntegerField(min_value=0, max_value=20)
+
+    def resolved_plan(self) -> str:
+        n = active_teams(self.flight).count()
+        return effective_plan(self.flight, n, self.weeks)
+
+    def override(self) -> tuple[str, list[int]]:
+        plan = self.cleaned_data["plan"]
+        if plan == "custom":
+            return plan, [self.cleaned_data[f"w{w}"] for w in range(1, self.weeks + 1)]
+        return plan, list(self.flight.games_per_team_by_week)
+
+
+class GamesForm:
+    """The games step: one sub-form per flight."""
+
+    def __init__(self, event: Event, data=None):
+        self.event = event
+        weeks = event.weeks.count()
+        flights = (
+            Flight.objects.filter(division__event=event)
+            .select_related("division__event__organization")
+            .order_by("division__pk", "pk")
+        )
+        self.forms = [FlightGamesForm(f, weeks, data) for f in flights]
+        self.bound = data is not None
+
+    def is_valid(self) -> bool:
+        return self.bound and all([f.is_valid() for f in self.forms])
+
+    def overrides(self) -> dict[int, tuple[str, list[int]]]:
+        return {f.flight.pk: f.override() for f in self.forms}
+
+    def valid_overrides(self) -> dict[int, tuple[str, list[int]]]:
+        """Overrides from the flights that validated, for previewing a partly bad form."""
+        return {f.flight.pk: f.override() for f in self.forms if self.bound and f.is_valid()}

@@ -1,0 +1,61 @@
+{% if dry_run_error %}
+<p role="alert" class="rounded-[10px] border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{{ dry_run_error }}</p>
+{% endif %}
+{% for card in cards %}
+{% with view=card.view %}
+<section class="grid gap-3 rounded-[10px] border border-border p-4">
+  <div class="flex items-center justify-between gap-3">
+    <h3 class="font-extrabold text-ink">{{ view.flight.name }}</h3>
+    <p class="text-sm text-muted-foreground">{{ view.team_count }} team{{ view.team_count|pluralize }}</p>
+  </div>
+  <fieldset class="flex flex-wrap items-center gap-x-4 gap-y-2" {% if locked %}disabled{% endif %}>
+    <legend class="mb-1 text-sm font-semibold text-ink">Each team plays every other team:</legend>
+    {% if locked %}
+    <span class="text-sm text-ink">{{ view.plan }}</span>
+    {% else %}
+    {% for option in card.options %}
+    <label class="inline-flex items-center gap-2 text-sm text-ink">
+      <input type="radio" name="{{ card.plan_name }}" value="{{ option.value }}" {% if option.checked %}checked{% endif %}>{{ option.label }}
+    </label>
+    {% endfor %}
+    {% endif %}
+  </fieldset>
+  {% for error in card.plan_errors %}<p class="text-sm text-danger">{{ error }}</p>{% endfor %}
+  {% if view.blocker %}
+  <p role="alert" class="text-sm text-danger">{{ view.blocker }}</p>
+  {% else %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-center text-sm">
+      <thead>
+        <tr class="text-muted-foreground">
+          {% for cell in card.cells %}<th scope="col" class="px-2 py-1 font-semibold">Wk{{ cell.week }}</th>{% endfor %}
+          <th scope="col" class="px-2 py-1 font-semibold">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          {% for cell in card.cells %}
+          <td class="px-1 py-1 align-top {% if cell.empty %}bg-warn-bg text-warn{% else %}text-ink{% endif %}">
+            {% if card.inputs %}
+            <label class="sr-only" for="{{ cell.id }}">Week {{ cell.week }} games per team</label>
+            <input type="number" min="0" max="20" id="{{ cell.id }}" name="{{ cell.name }}" value="{{ cell.value }}" class="w-16 rounded-[10px] border border-border px-2 py-1 text-center">
+            {% else %}{{ cell.shown }}{% endif %}
+            {% if cell.empty %}<span class="block text-xs">No games this week</span>{% endif %}
+            {% if cell.error %}<span class="block text-xs text-danger">{{ cell.error }}</span>{% endif %}
+          </td>
+          {% endfor %}
+          <td class="px-2 py-1 align-top font-semibold text-ink">{{ view.total }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% if card.hidden %}{% for cell in card.cells %}{% if not card.inputs %}<input type="hidden" name="{{ cell.name }}" value="{{ cell.value }}">{% endif %}{% endfor %}{% endif %}
+  {% if view.summary %}<p class="text-sm font-semibold text-ink">{{ view.summary }}</p>{% endif %}
+  {% for note in view.notes %}<p class="text-xs text-warn">{{ note }}</p>{% endfor %}
+</section>
+{% endwith %}
+{% empty %}
+{% url 'event_setup_step' event.pk 'flights' as flights_url %}
+{% include "components/empty_state.html" with icon="plus" message="Add a flight first." action_url=flights_url action_label="Go to Flights" only %}
+{% endfor %}

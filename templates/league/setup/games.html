@@ -1,0 +1,24 @@
+{% extends "league/setup/_frame.html" %}
+{% block form_attrs %}{% if not locked %} hx-post="{% url 'event_games_preview' event.pk %}" hx-trigger="change" hx-target="#games-cards" hx-swap="innerHTML"{% endif %}{% endblock %}
+{% block default_submit %}<button type="submit" id="default-submit" name="nav" value="stay" class="sr-only" tabindex="-1" aria-hidden="true">Update summary</button>{% endblock %}
+{% block step_body %}
+{% if confirm_needed %}
+<div role="alert" class="grid gap-3 rounded-[10px] border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
+  <p>Regenerating replaces the current draft schedule.</p>
+  <div class="flex flex-wrap gap-3">
+    <button type="submit" name="confirm" value="1" formaction="{% url 'event_generate' event.pk %}" class="btn">Regenerate</button>
+    <a href="{% url 'event_setup_step' event.pk step %}" class="btn" data-variant="outline">Keep the current schedule</a>
+  </div>
+</div>
+{% endif %}
+<div id="games-cards" class="grid gap-5">{% include "league/setup/_games_cards.html" %}</div>
+{% endblock %}
+{% block step_footer %}
+<button type="submit" name="nav" value="back" class="btn" data-variant="outline">Back</button>
+{% if not locked %}
+<div class="flex items-center gap-3">
+  <button type="submit" name="nav" value="stay" class="btn" data-variant="outline">Update summary</button>
+  <button type="submit" formaction="{% url 'event_generate' event.pk %}" class="btn">{% if has_matches %}Regenerate schedule{% else %}Generate schedule{% endif %}</button>
+</div>
+{% endif %}
+{% endblock %}
