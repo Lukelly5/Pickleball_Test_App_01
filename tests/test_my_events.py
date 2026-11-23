@@ -5,7 +5,7 @@ import pytest
 from accounts.models import Organization, User
 from league.display import date_range
 from league.models import Event
-from tests.factories import add_flight, add_team, make_event
+from tests.factories import add_flight, add_team, admin_of, make_event
 
 pytestmark = pytest.mark.django_db
 
@@ -24,10 +24,6 @@ def league():
     add_flight(event, format="mens")
     add_flight(event, format="mixed")
     return event
-
-
-def admin_of(org, email="a@example.com"):
-    return User.objects.create_user(email, "pw", organization=org, is_admin=True)
 
 
 def test_events_table(client, league):

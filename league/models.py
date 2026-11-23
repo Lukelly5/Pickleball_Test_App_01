@@ -113,6 +113,8 @@ class Event(models.Model):
     share_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
     window_minutes = models.PositiveIntegerField(null=True, blank=True)
     game_minutes = models.PositiveIntegerField(null=True, blank=True)
+    schedule_stale = models.BooleanField(default=False)
+    setup_step = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -130,19 +132,30 @@ class Event(models.Model):
             if not self.game_minutes:
                 self.game_minutes = 15
 
-    def set_week_count(self, n: int) -> None:
-        """Make this event's weeks exactly 1..n."""
-        self.weeks.filter(number__gt=n).delete()
-        existing = set(self.weeks.values_list("number", flat=True))
-        Week.objects.bulk_create(
-            Week(
-                event=self,
-                number=number,
-                date=self.start_date + timedelta(days=7 * (number - 1)),
-            )
-            for number in range(1, n + 1)
-            if number not in existing
+    def has_scores(self) -> bool:
+        """True once any match is final, forfeited, or has a game score."""
+        matches = Match.objects.filter(flight__division__event=self)
+        return (
+            matches.filter(
+                models.Q(status=Match.Status.FINAL) | models.Q(forfeited_by__isnull=False)
+            ).exists()
+            or GameScore.objects.filter(match__flight__division__event=self).exists()
         )
+
+    def set_week_count(self, n: int) -> None:
+        """Make this event's weeks exactly 1..n, each dated a week apart."""
+        if self.has_scores():
+            raise ValidationError("Scores have been entered, so the weeks can't change.")
+        self.weeks.filter(number__gt=n).delete()
+        weeks = {w.number: w for w in self.weeks.all()}
+        for number in range(1, n + 1):
+            day = self.start_date + timedelta(days=7 * (number - 1))
+            if number in weeks:
+                weeks[number].date = day
+            else:
+                weeks[number] = Week(event=self, number=number, date=day)
+        Week.objects.bulk_create(w for w in weeks.values() if w.pk is None)
+        Week.objects.bulk_update([w for w in weeks.values() if w.pk is not None], ["date"])
 
 
 class Division(models.Model):
@@ -169,8 +182,17 @@ class Flight(models.Model):
         WOMENS = "womens", "Women's"
         MIXED = "mixed", "Mixed"
 
+    class Plan(models.TextChoices):
+        AUTO = "", "Not chosen"
+        ONCE = "once"
+        TWICE = "twice"
+        CUSTOM = "custom"
+
     division = models.ForeignKey(Division, on_delete=models.CASCADE, related_name="flights")
     format = models.CharField(max_length=10, choices=Format.choices)
+    games_plan = models.CharField(
+        max_length=6, choices=Plan.choices, blank=True, default=Plan.CUSTOM
+    )
     games_per_team_by_week = models.JSONField(default=list, blank=True)
 
     class Meta:

@@ -79,6 +79,7 @@ class Command(BaseCommand):
             type=Event.Type.LEAGUE,
             start_date=date(2027, 3, 2),
             courts=6,
+            setup_step=5,
         )
         league.set_week_count(4)
         for level, mens, mixed in LEAGUE_DIVISIONS:
@@ -98,6 +99,7 @@ class Command(BaseCommand):
             courts=4,
             window_minutes=120,
             game_minutes=15,
+            setup_step=5,
         )
         tournament.set_week_count(1)
         division = Division.objects.create(event=tournament, level=Division.Level.INTERMEDIATE)

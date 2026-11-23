@@ -1,7 +1,7 @@
 from datetime import date
 
-from accounts.models import Organization
-from league.models import Division, Event, Flight, Player, Team, TeamMember
+from accounts.models import Organization, User
+from league.models import Division, Event, Flight, GameScore, Player, Team, TeamMember
 
 
 def make_event(name="Spring Tuesday League", weeks=4, courts=2, **fields):
@@ -36,3 +36,13 @@ def add_team(flight, name, players=None):
     for player in players:
         TeamMember.objects.create(team=team, player=player)
     return team
+
+
+def admin_of(org, email="a@example.com"):
+    return User.objects.create_user(email, "pw", organization=org, is_admin=True)
+
+
+def score(match, points_a=11, points_b=5, game_no=1):
+    return GameScore.objects.create(
+        match=match, game_no=game_no, points_a=points_a, points_b=points_b
+    )
