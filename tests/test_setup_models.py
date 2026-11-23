@@ -67,3 +67,17 @@ def test_generate_clears_stale():
 def test_seed_events_are_fully_set_up(debug_on):
     call_command("seed_demo")
     assert set(Event.objects.values_list("setup_step", flat=True)) == {5}
+
+
+def test_set_week_count_shrinks_and_keeps_dates():
+    event = make_event(weeks=4)
+    event.set_week_count(2)
+    assert [(w.number, w.date) for w in event.weeks.all()] == [(1, date(2027, 3, 2)), (2, date(2027, 3, 9))]
+
+
+def test_generate_resets_stale_on_callers_instance():
+    event = make_event(weeks=1)
+    two_team_match(event).delete()
+    event.schedule_stale = True
+    generate_event(event)
+    assert event.schedule_stale is False

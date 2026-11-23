@@ -101,6 +101,7 @@ def _check_ready(event: Event) -> None:
 
 
 def generate_event(event: Event) -> scheduler.Schedule:
+    original = event
     with transaction.atomic():
         event = Event.objects.select_for_update().get(pk=event.pk)
         _check_ready(event)
@@ -119,6 +120,7 @@ def generate_event(event: Event) -> scheduler.Schedule:
             for m in schedule.matches
         )
         Event.objects.filter(pk=event.pk).update(schedule_stale=False)
+    original.schedule_stale = False
     return schedule
 
 

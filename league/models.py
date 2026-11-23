@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 # 7 days is an assumption; the PRD does not say how long an invite lasts.
@@ -144,18 +144,21 @@ class Event(models.Model):
 
     def set_week_count(self, n: int) -> None:
         """Make this event's weeks exactly 1..n, each dated a week apart."""
-        if self.has_scores():
-            raise ValidationError("Scores have been entered, so the weeks can't change.")
-        self.weeks.filter(number__gt=n).delete()
-        weeks = {w.number: w for w in self.weeks.all()}
-        for number in range(1, n + 1):
-            day = self.start_date + timedelta(days=7 * (number - 1))
-            if number in weeks:
-                weeks[number].date = day
-            else:
-                weeks[number] = Week(event=self, number=number, date=day)
-        Week.objects.bulk_create(w for w in weeks.values() if w.pk is None)
-        Week.objects.bulk_update([w for w in weeks.values() if w.pk is not None], ["date"])
+        with transaction.atomic():
+            # Lock the row so the score check and the writes can't interleave with a score save.
+            locked = Event.objects.select_for_update().get(pk=self.pk)
+            if locked.has_scores():
+                raise ValidationError("Scores have been entered, so the weeks can't change.")
+            self.weeks.filter(number__gt=n).delete()
+            weeks = {w.number: w for w in self.weeks.all()}
+            for number in range(1, n + 1):
+                day = self.start_date + timedelta(days=7 * (number - 1))
+                if number in weeks:
+                    weeks[number].date = day
+                else:
+                    weeks[number] = Week(event=self, number=number, date=day)
+            Week.objects.bulk_create(w for w in weeks.values() if w.pk is None)
+            Week.objects.bulk_update([w for w in weeks.values() if w.pk is not None], ["date"])
 
 
 class Division(models.Model):
