@@ -108,9 +108,9 @@ def delete_team(team: Team) -> None:
     flight = team.flight
     event = flight.event
     with transaction.atomic():
+        mark_stale(event)  # before the matches go, or there would be nothing left to mark
         Match.objects.filter(flight=flight).delete()
         team.delete()
-        mark_stale(event)
         refresh_grids(event)
 
 

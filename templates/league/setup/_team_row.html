@@ -1,0 +1,25 @@
+{% comment %}Inline add/edit team row. Lives inside the step form, so Save is a submit button there.{% endcomment %}
+{% if form %}
+<div class="grid gap-4 rounded-[10px] border border-border bg-accent/30 p-4" id="team-row">
+  {% include "components/form_errors.html" with form=form only %}
+  <input type="hidden" name="flight" value="{{ flight.pk }}">
+  {% if editing_team %}<input type="hidden" name="team" value="{{ editing_team.pk }}">{% endif %}
+  {% include "components/form_field.html" with field=form.name only %}
+  <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid gap-2">
+      {% include "components/form_field.html" with field=form.player1 only %}
+      {% include "components/form_field.html" with field=form.player1_email only %}
+    </div>
+    <div class="grid gap-2">
+      {% include "components/form_field.html" with field=form.player2 only %}
+      {% include "components/form_field.html" with field=form.player2_email only %}
+    </div>
+  </div>
+  <p class="text-xs text-muted-foreground">Pick a player from the list, or type a new name. Add an email only for a new player.</p>
+  <div class="flex flex-wrap gap-3">
+    <button type="submit" name="action" value="save_team" class="btn"
+            hx-post="{% url 'event_setup_step' event.pk 'teams' %}" hx-target="#team-panel" hx-swap="outerHTML" hx-include="#step-form">Save team</button>
+    <a href="{% url 'event_setup_step' event.pk 'teams' %}?flight={{ flight.pk }}" class="btn" data-variant="outline">Cancel</a>
+  </div>
+</div>
+{% endif %}

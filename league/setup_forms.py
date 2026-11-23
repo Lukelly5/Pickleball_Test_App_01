@@ -1,6 +1,11 @@
-from django import forms
+import re
 
-from .models import Division, Event, Flight
+from django import forms
+from django.db import transaction
+from django.urls import reverse
+
+from .models import Division, Event, Flight, Player, Team, TeamMember
+from .setup import active_teams
 
 
 class BasicsForm(forms.ModelForm):
@@ -83,3 +88,131 @@ class FlightsForm(forms.Form):
             (label, boxes[i * width : (i + 1) * width])
             for i, (_, label) in enumerate(Division.Level.choices)
         ]
+
+
+def player_text(player: Player) -> str:
+    """What a player field accepts and the type-ahead offers."""
+    return f"{player.name} <{player.email}>" if player.email else f"{player.name} (#{player.pk})"
+
+
+_PK_SUFFIX = re.compile(r"^(?P<name>.*?)\s*\(#(?P<pk>\d+)\)$")
+_EMAIL_SUFFIX = re.compile(r"^(?P<name>.*?)\s*<(?P<email>[^<>]+)>$")
+
+
+class TeamForm(forms.Form):
+    name = forms.CharField(max_length=120)
+    player1 = forms.CharField(max_length=200, label="Player 1")
+    player1_email = forms.EmailField(required=False, label="Player 1 email (new players)")
+    player2 = forms.CharField(max_length=200, label="Player 2")
+    player2_email = forms.EmailField(required=False, label="Player 2 email (new players)")
+    team = forms.IntegerField(required=False, widget=forms.HiddenInput)
+
+    def __init__(self, *args, flight: Flight, team: Team | None = None, **kwargs):
+        if team is not None and "initial" not in kwargs and not args:
+            members = [m.player for m in team.members.select_related("player").order_by("pk")]
+            kwargs["initial"] = {
+                "name": team.name,
+                "team": team.pk,
+                **{f"player{i}": player_text(p) for i, p in enumerate(members[:2], 1)},
+            }
+        super().__init__(*args, **kwargs)
+        self.flight = flight
+        self.org = flight.event.organization
+        self.team = team
+        self.slots: list[tuple] = []
+        search = reverse("player_search", args=[flight.event.pk])
+        for field in ("player1", "player2"):
+            self.fields[field].widget.attrs.update({
+                "list": "player-options",
+                "autocomplete": "off",
+                "hx-get": search,
+                "hx-trigger": "input changed delay:250ms",
+                "hx-target": "#player-options",
+                "hx-swap": "innerHTML",
+            })
+
+    def _resolve(self, field: str):
+        """An existing Player, or ("new", name, email); None when the slot is ambiguous."""
+        text = self.cleaned_data[field].strip()
+        email_field = (self.cleaned_data.get(f"{field}_email") or "").strip()
+        players = Player.objects.filter(organization=self.org)
+        if match := _PK_SUFFIX.match(text):
+            found = players.filter(pk=match["pk"]).first()
+            if found:
+                return found
+            text = match["name"]
+        elif match := _EMAIL_SUFFIX.match(text):
+            found = players.filter(email__iexact=match["email"].strip()).first()
+            return found or ("new", match["name"].strip(), match["email"].strip())
+        if not email_field:
+            found = list(players.filter(name__iexact=text)[:2])
+            if len(found) > 1:
+                self.add_error(field, f"Two players are named {text}. Pick one from the list.")
+                return None
+            if found:
+                return found[0]
+            return ("new", text, "")
+        taken = players.filter(email__iexact=email_field).first()
+        if taken:
+            self.add_error(
+                field, f"{taken.name} <{taken.email}> already uses that email. Pick them from the list."
+            )
+            return None
+        return ("new", text, email_field)
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.errors.keys() & {"name", "player1", "player2"}:
+            return cleaned
+        name = cleaned["name"].strip()
+        clash = self.flight.teams.filter(name__iexact=name)
+        if self.team:
+            clash = clash.exclude(pk=self.team.pk)
+        if existing := clash.first():
+            self.add_error("name", f"There's already a team called {existing.name} in this flight.")
+        slots = [self._resolve("player1"), self._resolve("player2")]
+        if None in slots:
+            return cleaned
+        a, b = slots
+        same = (
+            isinstance(a, Player) and isinstance(b, Player) and a.pk == b.pk
+            or isinstance(a, tuple) and isinstance(b, tuple)
+            and (a[1].lower(), a[2].lower()) == (b[1].lower(), b[2].lower())
+        )
+        if same:
+            self.add_error(None, "Pick two different players.")
+            return cleaned
+        for slot in slots:
+            if not isinstance(slot, Player):
+                continue
+            membership = TeamMember.objects.filter(
+                player=slot, team__in=active_teams(self.flight)
+            ).select_related("team")
+            if self.team:
+                membership = membership.exclude(team=self.team)
+            if other := membership.first():
+                self.add_error(None, f"{slot.name} is already on {other.team.name} in this flight.")
+        self.slots = slots
+        return cleaned
+
+    def save(self) -> Team:
+        with transaction.atomic():
+            players = [
+                slot
+                if isinstance(slot, Player)
+                else Player.objects.create(organization=self.org, name=slot[1], email=slot[2])
+                for slot in self.slots
+            ]
+            name = self.cleaned_data["name"].strip()
+            if self.team:
+                team = self.team
+                team.name = name
+                team.save(update_fields=["name"])
+                team.members.exclude(player__in=players).delete()
+            else:
+                team = Team.objects.create(flight=self.flight, name=name)
+            have = set(team.members.values_list("player_id", flat=True))
+            for player in players:
+                if player.pk not in have:
+                    TeamMember.objects.create(team=team, player=player)
+        return team
