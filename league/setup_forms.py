@@ -268,5 +268,24 @@ class GamesForm:
         return {f.flight.pk: f.override() for f in self.forms}
 
     def valid_overrides(self) -> dict[int, tuple[str, list[int]]]:
-        """Overrides from the flights that validated, for previewing a partly bad form."""
-        return {f.flight.pk: f.override() for f in self.forms if self.bound and f.is_valid()}
+        """Overrides for previewing a partly bad form.
+
+        A flight that failed validation but was posted as custom still previews as custom,
+        with a best-effort grid (bad cells become 1), so its inputs and errors stay visible.
+        """
+        result = {}
+        for f in self.forms:
+            if not self.bound:
+                continue
+            if f.is_valid():
+                result[f.flight.pk] = f.override()
+            elif f.data.get(f"{f.prefix}-plan") == "custom":
+                grid = []
+                for week in range(1, f.weeks + 1):
+                    try:
+                        n = int(f.data.get(f"{f.prefix}-w{week}", ""))
+                    except (TypeError, ValueError):
+                        n = 1
+                    grid.append(n if 0 <= n <= 20 else 1)
+                result[f.flight.pk] = ("custom", grid)
+        return result

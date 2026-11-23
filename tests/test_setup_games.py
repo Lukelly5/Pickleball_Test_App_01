@@ -48,13 +48,19 @@ def test_preview_does_not_save(client, setup):
     assert flight.games_plan == "custom"
 
 
-@pytest.mark.parametrize("bad", ["", "-1", "x", "21"])
-def test_bad_numbers(client, setup, bad):
+@pytest.mark.parametrize("bad,text", [
+    ("", "This field is required."),
+    ("-1", "greater than or equal to 0"),
+    ("x", "Enter a whole number"),
+    ("21", "less than or equal to 20"),
+])
+def test_bad_numbers(client, setup, bad, text):
     event, flight = setup
     for path in ("", "preview/"):
         response = client.post(f"/events/{event.pk}/setup/games/{path}",
                                {**grid(flight, weeks=(bad, "1", "1", "1")), "nav": "stay"})
-        assert response.status_code == 200 and "text-danger" in response.content.decode()
+        html = response.content.decode()
+        assert response.status_code == 200 and "text-danger" in html and text in html
     flight.refresh_from_db()
     assert flight.games_per_team_by_week == [1, 1, 1, 1]
 
@@ -126,3 +132,13 @@ def test_locked_step_post_is_refused_but_back_navigates(client, setup):
     assert client.post(url, {"nav": "back"}).url.endswith("/setup/teams/")
     html = client.post(url + "preview/", grid(flight)).content.decode()
     assert "<input" not in html
+
+
+@pytest.mark.parametrize("path", ["", "preview/"])
+def test_invalid_custom_shows_inputs_when_saved_plan_is_blocked(client, setup, path):
+    event, flight = setup
+    Flight.objects.filter(pk=flight.pk).update(games_plan="once")
+    html = client.post(f"/events/{event.pk}/setup/games/{path}",
+                       {**grid(flight, weeks=("x", "1", "1", "1")), "nav": "stay"}).content.decode()
+    assert 'type="number"' in html and "Enter a whole number" in html
+    assert "Week 4 has no games" not in html
