@@ -1,7 +1,7 @@
 <div class="flex flex-wrap items-center justify-between gap-3">
   <nav aria-label="Weeks" class="inline-flex flex-wrap gap-1 rounded-full bg-muted p-1">
     {% for tab in board.tabs %}
-    <a href="?week={{ tab.number }}{% if filter_query %}&amp;{{ filter_query }}{% endif %}" class="rounded-full px-3 py-1 text-sm font-semibold whitespace-nowrap {% if tab.number == board.week %}bg-brand text-white{% elif tab.cancelled %}text-muted-foreground line-through{% else %}text-ink/70 hover:text-ink{% endif %}"{% if tab.number == board.week %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+    <a href="{% url 'event_preview' event.pk %}?week={{ tab.number }}{% if filter_query %}&amp;{{ filter_query }}{% endif %}" class="rounded-full px-3 py-1 text-sm font-semibold whitespace-nowrap {% if tab.number == board.week %}bg-brand text-white{% elif tab.cancelled %}text-muted-foreground line-through{% else %}text-ink/70 hover:text-ink{% endif %}"{% if tab.number == board.week %} aria-current="page"{% endif %}>{{ tab.label }}</a>
     {% endfor %}
   </nav>
   <form method="get" action="{% url 'event_preview' event.pk %}" class="flex flex-wrap items-center gap-2" hx-get="{% url 'event_preview' event.pk %}" hx-target="#preview-board" hx-push-url="true" hx-trigger="change">

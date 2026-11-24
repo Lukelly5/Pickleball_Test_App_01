@@ -223,10 +223,10 @@ def fake_board(pick):
             f"g{mid}", "game", rnd, court, mid, "F", "intermediate",
             (TeamSlot(f"t{mid}a", "A", "intermediate", False),
              TeamSlot(f"t{mid}b", "B", "intermediate", False)),
-            False, False, {},
+            False, False, False, {},
         )
 
-    open_ = Tile("o2-3", "open", 2, 3, None, "", "", (), False, False, {})
+    open_ = Tile("o2-3", "open", 2, 3, None, "", "", (), False, False, False, {})
     return Board(
         None, 1, [], 3, [[game(5, 1, 1), game(7, 1, 2), open_]], False, "", None, pick, [], []
     )

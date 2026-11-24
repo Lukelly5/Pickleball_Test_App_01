@@ -71,8 +71,10 @@ def swap_games(event: Event, match_a: int, match_b: int) -> None:
         if a.pk == b.pk:
             return
         a_round, a_court = a.round_no, a.court_no
-        # Park A on the spare court so the unique slot constraint never trips.
-        a.court_no = locked.courts + 1
+        # Park A on a court no row uses so the unique slot constraint never trips.
+        a.court_no = 1 + max(
+            Match.objects.filter(week=a.week).values_list("court_no", flat=True)
+        )
         a.save(update_fields=["court_no", "updated_at"])
         b_round, b_court = b.round_no, b.court_no
         b.round_no, b.court_no = a_round, a_court

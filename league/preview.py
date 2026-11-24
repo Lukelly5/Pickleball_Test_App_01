@@ -36,8 +36,9 @@ class Tile:
     flight_name: str
     level: str  # "" for open tiles
     teams: tuple[TeamSlot, ...]  # () for open tiles
-    locked: bool  # scored, withdrawn team, or cancelled week: not clickable
+    locked: bool  # scored, withdrawn team, cancelled week, or a court past the setting: not clickable
     faded: bool  # outside the filter: not clickable
+    scored: bool  # the game has a score (or forfeit): show the Scored label
     actions: dict[str, tuple[str, str | None]]  # click key -> resolve_click result
 
 
@@ -200,15 +201,16 @@ def build_board(event: Event, state: dict) -> Board:
     )
     scored = scored_match_ids(event)
     by_slot = {(m.round_no, m.court_no): m for m in matches}
+    width = max(event.courts, max((m.court_no for m in matches), default=0))
     top_round = max((m.round_no for m in matches), default=0)
 
     grid: list[list[Tile]] = []
     for rnd in range(1, top_round + 1):
         row = []
-        for court in range(1, event.courts + 1):
+        for court in range(1, width + 1):
             m = by_slot.get((rnd, court))
             if m is None:
-                row.append(Tile(f"o{rnd}-{court}", "open", rnd, court, None, "", "", (), False, False, {}))
+                row.append(Tile(f"o{rnd}-{court}", "open", rnd, court, None, "", "", (), court > event.courts, False, False, {}))
                 continue
             level = m.flight.division.level
             faded = filtered and m.flight_id not in shown
@@ -225,7 +227,8 @@ def build_board(event: Event, state: dict) -> Board:
             row.append(
                 Tile(
                     key, kind, rnd, court, m.pk, m.flight.name, level,
-                    (_slot(m, "a", level), _slot(m, "b", level)), locked, faded, {},
+                    (_slot(m, "a", level), _slot(m, "b", level)), locked, faded,
+                    m.pk in scored and kind == "game", {},
                 )
             )
         grid.append(row)
@@ -236,15 +239,15 @@ def build_board(event: Event, state: dict) -> Board:
         [
             Tile(
                 t.key, t.kind, t.round_no, t.court_no, t.match_id, t.flight_name, t.level,
-                t.teams, t.locked, t.faded,
-                {k: _decide(pick, k) for k in _tile_keys(t, read_only)},
+                t.teams, t.locked, t.faded, t.scored,
+                {k: _decide(pick, k) for k in _tile_keys(t, read_only)}
             )
             for t in row
         ]
         for row in grid
     ]
     return Board(
-        event, week_no, tabs, event.courts, rows, read_only, division, flight_id, pick,
+        event, week_no, tabs, width, rows, read_only, division, flight_id, pick,
         divisions, flights,
     )
 

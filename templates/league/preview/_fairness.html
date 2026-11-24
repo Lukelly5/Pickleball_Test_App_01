@@ -7,7 +7,7 @@
       {% for line in block.lines %}
       <div class="flex items-center gap-1.5">
         <dt class="text-muted-foreground">{{ line.label }}:</dt>
-        <dd class="text-ink">{{ line.text }}{% if line.ok %} <span aria-label="even">✓</span>{% endif %}</dd>
+        <dd class="text-ink">{{ line.text }}{% if line.ok %} <span aria-hidden="true">✓</span><span class="sr-only">even</span>{% endif %}</dd>
         {% if line.chip %}<span class="rounded-full bg-warn-bg px-2 text-xs font-semibold text-warn">{{ line.chip }}</span>{% endif %}
       </div>
       {% endfor %}

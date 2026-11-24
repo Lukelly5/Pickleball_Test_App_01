@@ -85,8 +85,7 @@ def frame_context(event: Event | None, step: str, **extra) -> dict:
         "step_count": len(STEPS),
         "steps": stepper_items(event, step),
         "new": event is None,
-        "published": event is not None
-        and event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED),
+        "published": event is not None and event.is_visible,
         "page_title": "Create league" if event is None else f"Edit league · {event.name}",
         **extra,
     }
@@ -201,7 +200,7 @@ def flights_step(request, event: Event, step: str = "flights"):
             if not removing:
                 return redirect(destination(event, step, request.POST.get("nav", "next")))
     # Flight names come from fixed choices (no user input), so marking them safe keeps the apostrophe literal.
-    published = event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+    published = event.is_visible
     warnings = [
         mark_safe(
             f"Removing {flight} deletes its {n} {'team' if n == 1 else 'teams'}."
@@ -368,7 +367,7 @@ def event_team_delete(request, pk, team_pk):
     event = setup_event(request, pk)
     team = get_object_or_404(Team, pk=team_pk, flight__division__event=event)
     flight_pk = team.flight_id
-    published = event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+    published = event.is_visible
     if published and request.POST.get("confirm") != "1":
         return redirect(f"{step_url(event, 'teams')}?flight={flight_pk}&delete={team.pk}")
     try:

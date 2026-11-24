@@ -1,7 +1,7 @@
 {% extends "base_app.html" %}
 {% block title %}Schedule Preview{% endblock %}
 {% block page_title %}{{ event.name }}{% endblock %}
-{% block page_meta %}{% if event.status == "published" %}{% include "components/status_badge.html" with value="published" label="Published" only %}{% else %}{% include "components/status_badge.html" with value="draft" label="Draft · not visible to players" only %}{% endif %}{% endblock %}
+{% block page_meta %}{% if event.status == "published" %}{% include "components/status_badge.html" with value="published" label="Published" only %}{% elif event.is_visible %}{% include "components/status_badge.html" with value=event.status label=event.get_status_display only %}{% else %}{% include "components/status_badge.html" with value="draft" label="Draft · not visible to players" only %}{% endif %}{% endblock %}
 {% block page_actions %}{% if has_matches %}
 <div class="flex flex-wrap items-center gap-3">
   <form method="post" action="{% url 'event_preview_regenerate' event.pk %}?{{ query }}">{% csrf_token %}<button type="submit" class="btn" data-variant="outline">Regenerate</button></form>
@@ -13,7 +13,7 @@
 {% block content %}
 {% if confirm == "regenerate" %}
 <div role="alert" class="grid gap-3 rounded-[10px] border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
-  <p>Regenerate the schedule? This replaces every game, including your swaps and moves.{% if event.status == "published" %} Players have already seen this schedule.{% endif %}</p>
+  <p>Regenerate the schedule? This replaces every game, including your swaps and moves.{% if event.is_visible %} Players have already seen this schedule.{% endif %}</p>
   <form method="post" action="{% url 'event_preview_regenerate' event.pk %}?{{ query }}" class="flex flex-wrap gap-3">{% csrf_token %}
     <button type="submit" name="confirm" value="1" class="btn">Regenerate</button>
     <a href="{% url 'event_preview' event.pk %}?{{ query }}" class="btn" data-variant="outline">Keep the current schedule</a>

@@ -132,6 +132,11 @@ class Event(models.Model):
             if not self.game_minutes:
                 self.game_minutes = 15
 
+    @property
+    def is_visible(self) -> bool:
+        """Players can see the schedule."""
+        return self.status in (self.Status.PUBLISHED, self.Status.COMPLETED)
+
     def scored_match_ids(self) -> set[int]:
         """Ids of matches that are final, forfeited, or have any game score."""
         matches = Match.objects.filter(flight__division__event=self)
