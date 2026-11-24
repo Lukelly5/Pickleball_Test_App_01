@@ -1,4 +1,4 @@
-from scheduler.fairness import FairnessReport, fairness_report, summary_line
+from scheduler.fairness import FairnessReport, fairness_report, pair_meet_text, summary_line
 from scheduler.fit import FitResult, check_fit, fit_message
 from scheduler.generate import generate
 from scheduler.pairings import round_robin_preset
@@ -11,6 +11,7 @@ __all__ = [
     "FitResult",
     "generate",
     "move_game",
+    "pair_meet_text",
     "fairness_report",
     "FairnessReport",
     "Flight",
