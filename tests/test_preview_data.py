@@ -354,13 +354,23 @@ def test_fairness_excludes_withdrawn_and_filters_flights():
         add_team(other, n)
     generate_event(event)
     t = flight.teams.first()
+    # The withdrawn team has no games at all: if it were counted, it would show
+    # as "0" on Games this week and drag the season total apart.
+    Match.objects.filter(team_a=t).delete()
+    Match.objects.filter(team_b=t).delete()
     t.withdrawn_at = timezone.now()
     t.save()
     both = fairness(event, 1, None)
     assert [f.flight_name for f in both] == ["Intermediate Men's", "Advanced Men's"]
-    ls = {l.label: l for l in both[0].lines}
-    # three active teams are left; the withdrawn team's games are not counted
-    assert t.name not in ls["Games this week"].text
+    for line in both[0].lines:
+        assert t.name not in line.text and t.name not in line.chip, line
     only = fairness(event, 1, {other.pk})
     assert [f.flight_name for f in only] == ["Advanced Men's"]
     assert {l.label: l for l in only[0].lines}["Games this week"].text == "2 each"
+
+
+def test_fairness_cancelled_week_games_line_is_ok():
+    event, _ = build()
+    Week.objects.filter(event=event, number=2).update(status="cancelled")
+    Match.objects.filter(week__number=2).delete()
+    assert lines(event, week=2)["Games this week"] == FairLine("Games this week", "0 each", True)

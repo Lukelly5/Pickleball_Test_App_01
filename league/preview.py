@@ -11,7 +11,7 @@ from django.http import QueryDict
 
 from league.models import Division, Event, Flight, Match, Team, Week
 from league.schedule_edits import scored_match_ids
-from league.scheduling import event_flights, load_schedule
+from league.scheduling import load_schedule
 from scheduler import fairness_report, pair_meet_text
 
 PICK_RE = re.compile(r"^(g\d+|t\d+[ab])$")
@@ -270,6 +270,7 @@ def fairness(event: Event, week: int, flight_ids: set[int] | None) -> list[Fligh
             flight__division__event=event, withdrawn_at__isnull=False
         ).values_list("pk", flat=True)
     }
+    cancelled = event.weeks.filter(number=week, status=Week.Status.CANCELLED).exists()
     result = []
     for flight in flights:
         if flight_ids is not None and int(flight.id) not in flight_ids:
@@ -284,7 +285,9 @@ def fairness(event: Event, week: int, flight_ids: set[int] | None) -> list[Fligh
         this_week = {tid: report.games_by_week.get(week, {}).get(tid, 0) for tid in ids}
         allowed = {planned, planned - 1} if len(teams) % 2 else {planned}
         off = [tid for tid in ids if this_week[tid] not in allowed]
-        if off:
+        if cancelled:
+            games = FairLine("Games this week", "0 each", True)
+        elif off:
             games = FairLine("Games this week", ", ".join(f"{name[t]} {this_week[t]}" for t in off), False)
         else:
             games = FairLine(
