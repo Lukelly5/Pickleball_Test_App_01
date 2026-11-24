@@ -3,6 +3,7 @@
 from urllib.parse import urlencode
 
 from django.shortcuts import get_object_or_404, render
+from django.utils.cache import patch_vary_headers
 
 from accounts.permissions import admin_required
 
@@ -43,12 +44,14 @@ def render_preview(
         "query": urlencode({"week": board.week, **filters}),
         "filter_query": urlencode(filters),
     }
-    template = (
-        "league/preview/_board.html"
-        if request.headers.get("HX-Request")
-        else "league/preview/page.html"
+    # htmx's history-restore request also sends HX-Request; it needs the whole page.
+    partial = request.headers.get("HX-Request") and not request.headers.get(
+        "HX-History-Restore-Request"
     )
-    return render(request, template, context, status=status)
+    template = "league/preview/_board.html" if partial else "league/preview/page.html"
+    response = render(request, template, context, status=status)
+    patch_vary_headers(response, ["HX-Request", "HX-History-Restore-Request"])
+    return response
 
 
 @admin_required

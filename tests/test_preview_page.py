@@ -4,6 +4,7 @@ from django.utils.html import escape
 from accounts.models import Organization, User
 from league.models import Event, Flight, Match, Week
 from league.scheduling import generate_event
+from tests.html_helpers import elements_with
 from tests.factories import add_flight, add_team, admin_of, make_event
 
 pytestmark = pytest.mark.django_db
@@ -68,10 +69,11 @@ def test_filters_fade_other_flights(client, league):
         add_team(other, n)
     generate_event(event)
     html = client.get(url(event, flight=flight.pk)).content.decode()
-    faded = [chunk for chunk in html.split("<div")[1:] if "data-faded" in chunk.split(">")[0]]
+    faded = [t for t in elements_with(html, "data-tile") if "data-faded" in t.split(">")[0]]
     assert faded
-    for chunk in faded:
-        assert "href=" not in chunk and "<form" not in chunk
+    for tile in faded:
+        assert "href=" not in tile and "<form" not in tile
+    assert elements_with(html, "data-faded") == faded
     assert "Aces" in html  # faded tiles still show
     fairness = html.split('id="fairness"')[1]
     assert escape(flight.name) in fairness and escape(other.name) not in fairness
@@ -145,9 +147,9 @@ def test_conflict_message_on_tile(client, league, rf):
     state = parse_state(event, request.GET)
     board = build_board(event, state)
     key = next(t.key for row in board.rows for t in row if t.kind == "game")
-    response = render_preview(request, event, state, conflict={"key": key, "message": "Can't swap: nope"}, status=409)
+    response = render_preview(request, event, state, conflict={"key": key, "message": "Can't swap: nope"}, status=200)
     html = response.content.decode()
-    assert response.status_code == 409
+    assert response.status_code == 200
     assert "data-conflict" in html and "Can&#x27;t swap: nope" in html
 
 
@@ -157,3 +159,18 @@ def test_row_link(client, league):
     event.save()
     html = client.get("/events/").content.decode()
     assert f'href="/events/{event.pk}/preview/"' in html
+
+
+def test_history_restore_gets_full_page_and_vary(client, league):
+    event, _ = league
+    partial = client.get(url(event), HTTP_HX_REQUEST="true")
+    assert "<html" not in partial.content.decode()
+    restore = client.get(url(event), HTTP_HX_REQUEST="true", HTTP_HX_HISTORY_RESTORE_REQUEST="true")
+    assert "<html" in restore.content.decode()
+    for response in (partial, restore, client.get(url(event))):
+        assert "HX-Request" in response["Vary"]
+
+
+def test_elements_with_captures_nested_markup():
+    html = '<div data-tile="a"><div><a href="/x">t</a></div><input name="q"></div><p>no</p>'
+    assert elements_with(html, "data-tile") == ['<div data-tile="a"><div><a href="/x">t</a></div><input name="q"></div>']
