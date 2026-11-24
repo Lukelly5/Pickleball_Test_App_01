@@ -1,0 +1,10 @@
+{% comment %}One clickable control. Needs tile, key, label, cls; reads tile.actions, so there is no click logic here.
+No action for the key (locked, faded, or an open court with nothing to move): plain text.{% endcomment %}
+{% if key in tile.actions %}{% for k, act in tile.actions.items %}{% if k == key %}{% if act.0 == "select" %}{% if key|first == "o" %}<span class="{{ cls }}">{{ label }}</span>{% else %}<a href="{% url 'event_preview' event.pk %}?{{ query }}{% if act.1 %}&amp;pick={{ act.1 }}{% endif %}" hx-get="{% url 'event_preview' event.pk %}?{{ query }}{% if act.1 %}&amp;pick={{ act.1 }}{% endif %}" hx-target="#preview-board" hx-push-url="true" class="{{ cls }}">{{ label }}</a>{% endif %}{% else %}<form method="post" action="{% url 'event_preview_edit' event.pk %}" hx-post="{% url 'event_preview_edit' event.pk %}" hx-target="#preview-board" class="contents">
+  <input type="hidden" name="pick" value="{{ board.pick|default:'' }}">
+  <input type="hidden" name="target" value="{{ key }}">
+  <input type="hidden" name="week" value="{{ board.week }}">
+  <input type="hidden" name="division" value="{{ board.division }}">
+  <input type="hidden" name="flight" value="{{ board.flight|default_if_none:'' }}">
+  <button type="submit" class="{{ cls }}">{{ label }}</button>
+</form>{% endif %}{% endif %}{% endfor %}{% else %}<span class="{{ cls }}">{{ label }}</span>{% endif %}

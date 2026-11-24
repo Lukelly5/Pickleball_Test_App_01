@@ -2,13 +2,21 @@
 
 from urllib.parse import urlencode
 
-from django.shortcuts import get_object_or_404, render
+import re
+
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.cache import patch_vary_headers
+from django.views.decorators.http import require_POST
 
 from accounts.permissions import admin_required
 
 from .models import Event, Match
-from .preview import build_board, fairness, parse_state
+from .preview import PICK_RE, build_board, fairness, parse_state, resolve_click
+from .schedule_edits import GONE, EditRefused, move_game, swap_games, swap_teams
+
+TEAM_KEY = re.compile(r"^t(\d+)([ab])$")
+OPEN_KEY = re.compile(r"^o(\d+)-(\d+)$")
 
 
 def preview_event(request, pk: int) -> Event:
@@ -58,3 +66,72 @@ def render_preview(
 def event_preview(request, pk: int):
     event = preview_event(request, pk)
     return render_preview(request, event, parse_state(event, request.GET))
+
+
+def _preview_url(event: Event, state: dict, pick: str | None = None) -> str:
+    """The preview URL for this week and filters, with a pick only when given."""
+    params = {"week": state["week"]}
+    if state["division"]:
+        params["division"] = state["division"]
+    if state["flight"]:
+        params["flight"] = state["flight"]
+    if pick:
+        params["pick"] = pick
+    return f"{reverse('event_preview', args=[event.pk])}?{urlencode(params)}"
+
+
+def _tile_key(target: str) -> str:
+    """The tile that shows a conflict: a team key belongs to its game's tile."""
+    found = TEAM_KEY.match(target)
+    return f"g{found.group(1)}" if found else target
+
+
+def _team_key(key: str) -> tuple[int, str]:
+    found = TEAM_KEY.match(key)
+    return int(found.group(1)), found.group(2)
+
+
+def _act(event: Event, action: str, pick: str, target: str) -> None:
+    """Run a write action. Keys come from the board, so they always decode."""
+    if action == "swap_games":
+        swap_games(event, int(pick[1:]), int(target[1:]))
+    elif action == "swap_teams":
+        swap_teams(event, _team_key(pick), _team_key(target))
+    else:
+        rnd, court = OPEN_KEY.match(target).groups()
+        move_game(event, int(pick[1:]), int(rnd), int(court))
+
+
+@admin_required
+@require_POST
+def event_preview_edit(request, pk: int):
+    """A click: select a pick, or act on it (swap games, swap teams, move)."""
+    event = preview_event(request, pk)
+    state = parse_state(event, request.POST)
+    target = request.POST.get("target", "")
+    htmx = bool(request.headers.get("HX-Request"))
+
+    def reply(url: str, new_state: dict, **kwargs):
+        if not htmx:
+            return redirect(url)
+        response = render_preview(request, event, new_state, **kwargs)
+        response["HX-Push-Url"] = url
+        return response
+
+    board = build_board(event, state)
+    if PICK_RE.match(request.POST.get("pick", "")) and board.pick is None:
+        # The pick names a game that is gone (or can no longer be clicked).
+        return render_preview(
+            request, event, {**state, "pick": None}, conflict={"key": _tile_key(target), "message": GONE}
+        )
+
+    action, value = resolve_click(board, target)
+    if action == "select":
+        return reply(_preview_url(event, state, value), {**state, "pick": value})
+
+    clear = {**state, "pick": None}
+    try:
+        _act(event, action, board.pick, value)
+    except EditRefused as exc:
+        return render_preview(request, event, clear, conflict={"key": _tile_key(target), "message": str(exc)})
+    return reply(_preview_url(event, state), clear)
