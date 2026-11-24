@@ -45,9 +45,9 @@ def test_full_setup_walkthrough(client):
     assert client.post(f"{base}/games/", data).status_code == 200  # "stay" re-renders the step
 
     response = client.post(f"{base}/games/generate/", data, follow=True)
-    assert response.redirect_chain[-1][0] == "/events/"
+    assert response.redirect_chain[-1][0] == f"/events/{event.pk}/preview/"
     assert "Schedule drafted · 24 games over 4 weeks" in [str(m) for m in response.context["messages"]]
     assert Match.objects.filter(flight__division__event=event).count() == 24
     event.refresh_from_db()
     assert all(step_done(event).values())
-    assert f'href="/events/{event.pk}/setup/"' in response.content.decode()
+    assert f'href="/events/{event.pk}/preview/"' in client.get("/events/").content.decode()

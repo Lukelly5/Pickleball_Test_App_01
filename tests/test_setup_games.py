@@ -65,10 +65,10 @@ def test_bad_numbers(client, setup, bad, text):
     assert flight.games_per_team_by_week == [1, 1, 1, 1]
 
 
-def test_generate_goes_to_my_events_with_toast(client, setup):
+def test_generate_goes_to_preview_with_toast(client, setup):
     event, flight = setup
     response = client.post(f"/events/{event.pk}/setup/games/generate/", grid(flight), follow=True)
-    assert response.redirect_chain[-1][0] == "/events/"
+    assert response.redirect_chain[-1][0] == f"/events/{event.pk}/preview/"
     assert "Schedule drafted · 8 games over 4 weeks" in response.content.decode()
     assert Match.objects.filter(flight=flight).count() == 8
 

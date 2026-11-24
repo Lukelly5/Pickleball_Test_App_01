@@ -41,7 +41,7 @@ def test_events_table(client, league):
     assert "Mar 2–Mar 23" in html and 'data-label="Flights"' in html
     assert 'data-status="draft"' in html and "Not Mine" not in html
     assert f'href="/events/{league.pk}/setup/"' in html  # draft league with no matches → setup
-    assert "Old Cup</a>" not in html  # a draft tournament stays plain text until P4 exists
+    assert f'href="/events/{Event.objects.get(name="Old Cup").pk}/preview/"' in html  # draft tournament → P4
 
 
 @pytest.mark.urls("tests.future_urls")

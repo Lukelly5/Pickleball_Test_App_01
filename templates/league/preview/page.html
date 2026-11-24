@@ -1,0 +1,16 @@
+{% extends "base_app.html" %}
+{% block title %}Schedule Preview · Stryde{% endblock %}
+{% block page_title %}{{ event.name }}{% endblock %}
+{% block page_meta %}{% if event.status == "published" %}{% include "components/status_badge.html" with value="published" label="Published" only %}{% else %}{% include "components/status_badge.html" with value="draft" label="Draft · not visible to players" only %}{% endif %}{% endblock %}
+{% block page_actions %}{% comment %}Task 6 adds the Regenerate and Publish forms here.{% endcomment %}{% endblock %}
+{% block content %}
+{% if event.schedule_stale %}
+<p role="status" class="rounded-[10px] border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">Inputs changed — regenerate to apply them.</p>
+{% endif %}
+{% if has_matches %}
+<div id="preview-board" class="grid gap-5">{% include "league/preview/_board.html" %}</div>
+{% else %}
+{% url 'event_setup_step' event.pk 'games' as games_url %}
+{% include "components/empty_state.html" with icon="calendar-plus" message="No schedule yet" action_url=games_url action_label="Go to the Games step" only %}
+{% endif %}
+{% endblock %}

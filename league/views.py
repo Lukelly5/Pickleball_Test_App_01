@@ -13,7 +13,7 @@ from .models import Event, Match, Team
 
 def _row_link(event) -> str | None:
     if event.status != Event.Status.DRAFT:
-        return optional_reverse("event_schedule", event.pk)
+        return optional_reverse("event_schedule", event.pk) or optional_reverse("event_preview", event.pk)
     if event.type == Event.Type.LEAGUE:
         setup = reverse("event_setup", args=[event.pk])
         return (optional_reverse("event_preview", event.pk) or setup) if event.has_matches else setup
