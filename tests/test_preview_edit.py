@@ -326,3 +326,54 @@ def test_conflict_shows_on_open_court_and_team_targets(client, league):
     html = post(client, league, htmx=True, pick=f"g{m.pk}", target=f"o{r}-{c}").content.decode()
     tile = tile_for(html, f"o{r}-{c}")
     assert "data-conflict" in tile.split(">")[0] and "Can" in tile and "move" in tile
+
+
+def test_forms_carry_csrf_and_post_with_enforced_checks(league):
+    from django.test import Client
+
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(admin_of(league.organization, "csrf@example.com"))
+    a, b = find_swap(league)
+    html = client.get(preview(league, pick=f"g{a.pk}")).content.decode()
+    form = next(
+        f for f in elements_with(html, "data-tile") if f'data-key="g{b.pk}"' in f.split(">")[0]
+    )
+    assert "<form" in form
+    token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', form).group(1)
+    response = client.post(
+        edit_url(league),
+        {"pick": f"g{a.pk}", "target": f"g{b.pk}", "week": 1, "division": "", "flight": "",
+         "csrfmiddlewaretoken": token},
+    )
+    assert response.status_code == 302
+    assert client.post(edit_url(league), {"target": f"g{b.pk}"}).status_code == 403
+
+
+def test_game_header_is_a_block_control_not_in_a_paragraph(client, league):
+    a, b = week1(league)[:2]
+    for q in ({}, {"pick": f"g{a.pk}"}):
+        html = client.get(preview(league, **q)).content.decode()
+        tile = tile_for(html, f"g{b.pk}")
+        assert "min-h-11" in tile
+        assert not re.search(r"<p[^>]*>(?:(?!</p>).)*<form", tile, re.S)
+
+
+def test_faded_tiles_with_a_pick_stay_inert(client, league):
+    from tests.factories import add_flight as _af
+
+    other = _af(league, level="advanced", games=(2, 2, 2, 2))
+    for n in ("Aces", "Bolts", "Cobras", "Drivers"):
+        add_team(other, n)
+    generate_event(league)
+    mine = Match.objects.filter(
+        flight__division__level="intermediate", week__number=1
+    ).first()
+    html = client.get(
+        preview(league, division="intermediate", pick=f"g{mine.pk}")
+    ).content.decode()
+    faded = [t for t in tiles(html, "game") if "data-faded" in t.split(">")[0]]
+    assert faded
+    for tile in faded:
+        assert "href=" not in tile and "<form" not in tile
+    opens = tiles(html, "open")
+    assert opens and all("<form" in t for t in opens)
