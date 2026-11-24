@@ -5,7 +5,8 @@ import pytest
 from accounts.models import Organization, User
 from league.display import date_range
 from league.models import Event
-from tests.factories import add_flight, add_team, make_event
+from league.scheduling import generate_event
+from tests.factories import add_flight, add_team, admin_of, make_event
 
 pytestmark = pytest.mark.django_db
 
@@ -26,10 +27,6 @@ def league():
     return event
 
 
-def admin_of(org, email="a@example.com"):
-    return User.objects.create_user(email, "pw", organization=org, is_admin=True)
-
-
 def test_events_table(client, league):
     Event.objects.create(organization=league.organization, name="Old Cup",
                          type="tournament", start_date=date(2026, 9, 1), courts=2)
@@ -43,18 +40,25 @@ def test_events_table(client, league):
     html = response.content.decode()
     assert "Mar 2–Mar 23" in html and 'data-label="Flights"' in html
     assert 'data-status="draft"' in html and "Not Mine" not in html
-    assert f'href="/events/{league.pk}/' not in html  # no P4/P5 yet: plain-text rows
+    assert f'href="/events/{league.pk}/setup/"' in html  # draft league with no matches → setup
+    assert "Old Cup</a>" not in html  # a draft tournament stays plain text until P4 exists
 
 
 @pytest.mark.urls("tests.future_urls")
 def test_rows_link_when_pages_exist(client, league):
     league.status = Event.Status.PUBLISHED
     league.save()
+    drafted = make_event(name="Drafted League", weeks=1)
+    flight = add_flight(drafted, games=(1,))
+    add_team(flight, "A")
+    add_team(flight, "B")
+    generate_event(drafted)
     draft = Event.objects.create(organization=league.organization, name="Draft Cup",
                                  type="tournament", start_date=date(2027, 4, 1), courts=2)
     client.force_login(admin_of(league.organization))
     html = client.get("/events/").content.decode()
-    assert f'href="/events/{draft.pk}/preview/"' in html  # draft → P4
+    assert f'href="/events/{draft.pk}/preview/"' in html  # draft tournament → P4
+    assert f'href="/events/{drafted.pk}/preview/"' in html  # draft league with matches → P4
     assert f'href="/events/{league.pk}/schedule/"' in html  # published → P5
     assert 'href="/events/new/"' in html  # Create button
 

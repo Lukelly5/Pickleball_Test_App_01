@@ -1,0 +1,25 @@
+{% extends "league/setup/_frame.html" %}
+{% block default_submit %}{% if form %}<button type="submit" id="default-submit" name="action" value="save_team" class="sr-only" tabindex="-1" aria-hidden="true">Save team</button>{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block step_body %}
+{% if not has_flights %}
+{% url 'event_setup_step' event.pk 'flights' as flights_url %}
+{% include "components/empty_state.html" with icon="plus" message="Add a flight first." action_url=flights_url action_label="Go to Flights" only %}
+{% else %}
+<datalist id="player-options">{% include "league/setup/_player_options.html" with players=player_options %}</datalist>
+<div class="grid gap-6 md:grid-cols-[16rem_1fr]">
+  <nav aria-label="Flights" class="grid content-start gap-2">
+    {% for item in flights %}
+    <div class="grid gap-1">
+      <a href="{% url 'event_setup_step' event.pk 'teams' %}?flight={{ item.flight.pk }}"
+         class="flex items-center justify-between rounded-[10px] border border-border px-3 py-2 text-sm font-semibold text-ink {% if item.current %}bg-accent{% endif %}"
+         {% if item.current %}aria-current="page"{% endif %}>
+        <span>{{ item.flight.name }}</span><span class="text-muted-foreground">{{ item.count }}</span>
+      </a>
+      {% for note in item.notes %}<p class="text-xs text-warn">{{ note }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+  </nav>
+  {% include "league/setup/_team_list.html" %}
+</div>
+{% endif %}
+{% endblock %}

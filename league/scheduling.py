@@ -4,9 +4,9 @@ from collections import Counter
 
 import scheduler
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch
 
-from league.models import Event, Flight, GameScore, Match, Team, TeamMember, Week
+from league.models import Event, Flight, Match, Team, TeamMember, Week
 
 
 def _player_keys(event: Event) -> dict[int, str]:
@@ -68,10 +68,7 @@ def _check_ready(event: Event) -> None:
     )
     if not flights:
         raise scheduler.ScheduleError("Add at least one flight before generating.")
-    scored = Match.objects.filter(flight__division__event=event).filter(
-        Q(status=Match.Status.FINAL) | Q(forfeited_by__isnull=False)
-    ).exists() or GameScore.objects.filter(match__flight__division__event=event).exists()
-    if scored:
+    if event.has_scores():
         raise scheduler.ScheduleError(
             "Scores have been entered, so the schedule can't be regenerated. "
             "Move individual games instead."
@@ -104,7 +101,9 @@ def _check_ready(event: Event) -> None:
 
 
 def generate_event(event: Event) -> scheduler.Schedule:
+    original = event
     with transaction.atomic():
+        event = Event.objects.select_for_update().get(pk=event.pk)
         _check_ready(event)
         schedule = scheduler.generate(event_flights(event), event.courts)
         weeks = {w.number: w for w in Week.objects.filter(event=event)}
@@ -120,6 +119,8 @@ def generate_event(event: Event) -> scheduler.Schedule:
             )
             for m in schedule.matches
         )
+        Event.objects.filter(pk=event.pk).update(schedule_stale=False)
+    original.schedule_stale = False
     return schedule
 
 

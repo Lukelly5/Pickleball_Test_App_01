@@ -1,0 +1,10 @@
+{% extends "league/setup/_frame.html" %}
+{% block step_body %}
+{% include "components/form_errors.html" with form=form only %}
+{% include "components/form_field.html" with field=form.name only %}
+<div class="grid gap-5 md:grid-cols-3">
+  {% include "components/form_field.html" with field=form.start_date only %}
+  {% include "components/form_field.html" with field=form.weeks only %}
+  {% include "components/form_field.html" with field=form.courts only %}
+</div>
+{% endblock %}

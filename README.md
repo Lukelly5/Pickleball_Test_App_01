@@ -19,6 +19,14 @@ python -m venv .venv
 .venv/Scripts/python -m scheduler --help          # the scheduling engine CLI
 ```
 
+## Create a league
+
+Admins create a league at `/events/new/` (the "Create" button on My Events). It is a five-step wizard: Basics, Scoring, Flights, Teams, Games plan.
+
+- Each step saves a draft as you go, so you can leave and resume from `/events/<id>/setup/`, which opens the first unfinished step.
+- Generate (on the last step) saves a draft schedule. The preview page for it arrives in the next slice; for now you land back on My Events.
+- Setup locks once any score is entered: weeks, courts, scoring, flights, teams and the games plan can no longer change. Only the name and player score entry stay editable.
+
 ## Demo data
 
 `seed_demo` creates the organization "Waco Regional (Demo)" with a 6-flight league and an 8-team tournament, and two logins at `/login/`, both with the password `pickleball`:

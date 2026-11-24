@@ -1,0 +1,41 @@
+{% extends "league/setup/_frame.html" %}
+{% block step_body %}
+{% include "components/form_errors.html" with form=form only %}
+{% for error in form.cells.errors %}
+<p role="alert" class="rounded-[10px] border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{{ error }}</p>
+{% endfor %}
+{% if warnings %}
+<div role="alert" class="grid gap-3 rounded-[10px] border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
+  {% for line in warnings %}<p>{{ line }}</p>{% endfor %}
+  <div class="flex flex-wrap gap-3">
+    <input type="hidden" name="nav" value="{{ nav }}">
+    <button type="submit" name="confirm" value="1" class="btn">Remove and continue</button>
+    <a href="{% url 'event_setup_step' event.pk step %}" class="btn" data-variant="outline">Keep them</a>
+  </div>
+</div>
+{% endif %}
+<table class="w-full text-sm">
+  <thead>
+    <tr class="text-left text-muted-foreground">
+      <th scope="col" class="py-2 pr-3 font-semibold"><span class="sr-only">Level</span></th>
+      <th scope="col" class="px-3 py-2 text-center font-semibold">Men's</th>
+      <th scope="col" class="px-3 py-2 text-center font-semibold">Women's</th>
+      <th scope="col" class="px-3 py-2 text-center font-semibold">Mixed</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for label, boxes in form.grid %}
+    <tr class="border-t border-border">
+      <th scope="row" class="py-3 pr-3 text-left font-semibold text-ink">{{ label }}</th>
+      {% for box in boxes %}
+      <td class="px-3 py-3 text-center">
+        <label class="inline-flex items-center justify-center p-2">
+          {{ box.tag }}<span class="sr-only">{{ box.choice_label }}</span>
+        </label>
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
