@@ -1,6 +1,8 @@
 import re
 
 from django import forms
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.urls import reverse
 
@@ -142,8 +144,14 @@ class TeamForm(forms.Form):
                 return found
             text = match["name"]
         elif match := _EMAIL_SUFFIX.match(text):
-            found = players.filter(email__iexact=match["email"].strip()).first()
-            return found or ("new", match["name"].strip(), match["email"].strip())
+            email = match["email"].strip()
+            try:
+                validate_email(email)
+            except ValidationError:
+                self.add_error(field, "Enter a valid email address.")
+                return None
+            found = players.filter(email__iexact=email).first()
+            return self._new(field, match["name"].strip(), email) if not found else found
         if not email_field:
             found = list(players.filter(name__iexact=text)[:2])
             if len(found) > 1:
@@ -151,14 +159,20 @@ class TeamForm(forms.Form):
                 return None
             if found:
                 return found[0]
-            return ("new", text, "")
+            return self._new(field, text, "")
         taken = players.filter(email__iexact=email_field).first()
         if taken:
             self.add_error(
                 field, f"{taken.name} <{taken.email}> already uses that email. Pick them from the list."
             )
             return None
-        return ("new", text, email_field)
+        return self._new(field, text, email_field)
+
+    def _new(self, field: str, name: str, email: str):
+        if len(name) > 120:
+            self.add_error(field, "Keep names to 120 characters.")
+            return None
+        return ("new", name, email)
 
     def clean(self):
         cleaned = super().clean()
@@ -174,6 +188,9 @@ class TeamForm(forms.Form):
         if None in slots:
             return cleaned
         a, b = slots
+        if isinstance(a, tuple) and isinstance(b, tuple) and a[2] and a[2].lower() == b[2].lower()                 and a[1].lower() != b[1].lower():
+            self.add_error("player2", f"Both players can't use {b[2]}.")
+            return cleaned
         same = (
             isinstance(a, Player) and isinstance(b, Player) and a.pk == b.pk
             or isinstance(a, tuple) and isinstance(b, tuple)

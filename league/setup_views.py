@@ -189,9 +189,8 @@ def flights_step(request, event: Event, step: str = "flights"):
                 if not removing:
                     row.setup_step = max(row.setup_step, STEPS.index(step) + 1)
                     row.save(update_fields=["setup_step"])
-        except SetupLocked as exc:
-            messages.error(request, str(exc))
-            return redirect(step_url(event, step))
+        except SetupLocked:
+            return redirect(destination(event, step, request.POST.get("nav", "next")))
         except RestrictedError:
             messages.error(
                 request, "Some of those flights have games that can't be removed. Nothing was changed."
@@ -243,7 +242,7 @@ def _flight_notes(flight: Flight) -> list[str]:
 def _team_of(flight: Flight, value) -> Team | None:
     """The flight's team for a posted or queried pk; junk means no team."""
     value = str(value or "")
-    return flight.teams.filter(pk=int(value)).first() if value.isdigit() else None
+    return flight.teams.filter(pk=int(value)).first() if value.isascii() and value.isdigit() else None
 
 
 def _chosen_flight(request, flights: list[Flight]) -> Flight | None:
@@ -298,7 +297,9 @@ def teams_step(request, event: Event, step: str = "teams"):
 
     if request.method != "POST":
         return render(request, template, page())
-    if request.POST.get("action") != "save_team":
+    typed = any((request.POST.get(f) or "").strip() for f in ("name", "player1", "player2"))
+    nav_only = request.POST.get("action") != "save_team"
+    if nav_only and not typed:
         try:
             with editing(event) as row:
                 row.setup_step = max(row.setup_step, STEPS.index(step) + 1)
@@ -317,8 +318,18 @@ def teams_step(request, event: Event, step: str = "teams"):
                 mark_stale(event)
                 refresh_grids(event)
         except SetupLocked as exc:
+            if nav_only:
+                return redirect(destination(event, step, request.POST.get("nav", "next")))
             messages.error(request, str(exc))
         else:
+            if nav_only:
+                try:
+                    with editing(event) as row:
+                        row.setup_step = max(row.setup_step, STEPS.index(step) + 1)
+                        row.save(update_fields=["setup_step"])
+                except SetupLocked:
+                    pass
+                return redirect(destination(event, step, request.POST.get("nav", "next")))
             if htmx:
                 return render(request, "league/setup/_team_list.html", page())
             return redirect(f"{step_url(event, step)}?flight={flight.pk}")

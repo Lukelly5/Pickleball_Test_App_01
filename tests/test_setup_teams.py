@@ -179,3 +179,71 @@ def test_non_integer_team_is_not_a_500(client, setup):
     event, flight = setup
     assert post_team(client, event, flight, team="abc").status_code == 200  # form error, no team created
     assert client.get(f"/events/{event.pk}/setup/teams/row/?flight={flight.pk}&team=abc").status_code == 200
+
+
+def teams_url(event, flight):
+    return f"/events/{event.pk}/setup/teams/?flight={flight.pk}"
+
+
+def row(**fields):
+    data = {"name": "Dinkers", "player1": "Sam Lee", "player1_email": "sam@example.com",
+            "player2": "Pat Kim", "player2_email": "pat@example.com"}
+    data.update(fields)
+    return data
+
+
+def test_next_saves_a_typed_row(client, setup):
+    event, flight = setup
+    response = client.post(teams_url(event, flight), {**row(), "flight": flight.pk, "nav": "next"})
+    assert response.status_code == 302 and response.url == f"/events/{event.pk}/setup/games/"
+    assert Team.objects.filter(name="Dinkers").exists()
+
+
+def test_next_with_invalid_row_stays_with_error(client, setup):
+    event, flight = setup
+    response = client.post(
+        teams_url(event, flight), {**row(player2=""), "flight": flight.pk, "nav": "next"}
+    )
+    assert response.status_code == 200 and "This field is required." in response.content.decode()
+    assert not Team.objects.filter(name="Dinkers").exists()
+
+
+def test_same_new_email_is_an_error_not_a_500(client, setup):
+    event, flight = setup
+    response = post_team(client, event, flight, player1="Sam Lee", player1_email="x@example.com",
+                         player2="Pat Kim", player2_email="X@example.com")
+    assert response.status_code == 200
+    assert "Both players can&#x27;t use X@example.com." in response.content.decode()
+    assert not Team.objects.exists() and not Player.objects.exists()
+
+
+def test_bracket_email_is_validated(client, setup):
+    event, flight = setup
+    response = post_team(client, event, flight, player1="Foo <not an email>", player1_email="")
+    assert response.status_code == 200
+    assert "Enter a valid email address." in response.content.decode()
+    assert not Player.objects.filter(email="not an email").exists()
+
+
+def test_superscript_digit_team_is_not_a_500(client, setup):
+    event, flight = setup
+    assert client.get(f"/events/{event.pk}/setup/teams/row/?team=%C2%B2").status_code == 200
+
+
+def test_long_player_name_is_an_error(client, setup):
+    event, flight = setup
+    response = post_team(client, event, flight, player1="x" * 121, player1_email="")
+    assert response.status_code == 200
+    assert "Keep names to 120 characters." in response.content.decode()
+    assert not Player.objects.exists()
+
+
+def test_other_orgs_event_404s_for_row_and_delete(client, setup):
+    event, flight = setup
+    other = make_event(name="X")
+    other.organization = Organization.objects.create(name="Else")
+    other.save()
+    team = add_team(flight, "Dinkers")
+    assert client.get(f"/events/{other.pk}/setup/teams/row/").status_code == 404
+    assert client.post(f"/events/{other.pk}/setup/teams/{team.pk}/delete/").status_code == 404
+    assert Team.objects.filter(pk=team.pk).exists()

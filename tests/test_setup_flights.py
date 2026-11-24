@@ -65,3 +65,13 @@ def test_locked(client, event):
     html = client.get(url(event)).content.decode()
     assert "disabled" in html
 
+
+@pytest.mark.parametrize("nav, target", [("next", "teams"), ("back", "scoring"), ("goto:games", "games")])
+def test_locked_still_navigates(client, event, nav, target):
+    flight = add_flight(event, games=(1, 1, 1, 1))
+    add_team(flight, "A"); add_team(flight, "B")
+    generate_event(event); score(Match.objects.first())
+    response = client.post(url(event), {"cells": ["advanced:mixed"], "nav": nav})
+    assert response.status_code == 302 and response.url == f"/events/{event.pk}/setup/{target}/"
+    assert Flight.objects.filter(pk=flight.pk).exists()
+

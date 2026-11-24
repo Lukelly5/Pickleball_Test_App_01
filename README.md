@@ -21,7 +21,7 @@ python -m venv .venv
 
 ## Create a league
 
-Admins create a league at `/events/new/` (the "Create league" button on My Events). It is a five-step wizard: Basics, Scoring, Flights, Teams, Games plan.
+Admins create a league at `/events/new/` (the "Create" button on My Events). It is a five-step wizard: Basics, Scoring, Flights, Teams, Games plan.
 
 - Each step saves a draft as you go, so you can leave and resume from `/events/<id>/setup/`, which opens the first unfinished step.
 - Generate (on the last step) saves a draft schedule. The preview page for it arrives in the next slice; for now you land back on My Events.
