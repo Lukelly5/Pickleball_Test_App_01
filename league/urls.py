@@ -18,5 +18,7 @@ urlpatterns = [
     path("events/<int:pk>/setup/<str:step>/", setup_views.event_setup_step, name="event_setup_step"),
     path("events/<int:pk>/preview/", preview_views.event_preview, name="event_preview"),
     path("events/<int:pk>/preview/edit/", preview_views.event_preview_edit, name="event_preview_edit"),
+    path("events/<int:pk>/preview/regenerate/", preview_views.event_preview_regenerate, name="event_preview_regenerate"),
+    path("events/<int:pk>/preview/publish/", preview_views.event_preview_publish, name="event_preview_publish"),
     path("me/", views.my_games, name="my_games"),
 ]

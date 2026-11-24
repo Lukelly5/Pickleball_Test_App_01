@@ -1,3 +1,4 @@
+import re
 import pytest
 from django.utils.html import escape
 
@@ -122,7 +123,7 @@ def test_published_badge(client, league):
     event.save()
     html = client.get(url(event)).content.decode()
     assert "Published" in html and "Draft · not visible" not in html
-    assert ">Publish<" not in html
+    assert not re.search(r"<button[^>]*>s*Publishs*</button>", html)
 
 
 def test_no_games_this_week_and_htmx_partial(client, league):

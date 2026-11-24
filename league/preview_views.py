@@ -4,16 +4,19 @@ from urllib.parse import urlencode
 
 import re
 
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.cache import patch_vary_headers
 from django.views.decorators.http import require_POST
 
+import scheduler
 from accounts.permissions import admin_required
+from ui.nav import optional_reverse
 
 from .models import Event, Match
 from .preview import PICK_RE, build_board, fairness, parse_state, resolve_click
-from .schedule_edits import GONE, EditRefused, move_game, swap_games, swap_teams
+from .schedule_edits import GONE, EditRefused, move_game, publish, regenerate, swap_games, swap_teams
 
 TEAM_KEY = re.compile(r"^t(\d+)([ab])$")
 OPEN_KEY = re.compile(r"^o(\d+)-(\d+)$")
@@ -135,3 +138,44 @@ def event_preview_edit(request, pk: int):
     except EditRefused as exc:
         return render_preview(request, event, clear, conflict={"key": _tile_key(target), "message": str(exc)})
     return reply(_preview_url(event, state), clear)
+
+
+def regenerated_message(games: int, weeks: int) -> str:
+    return (
+        f"Schedule regenerated · {games} {'game' if games == 1 else 'games'}"
+        f" over {weeks} {'week' if weeks == 1 else 'weeks'}"
+    )
+
+
+@admin_required
+@require_POST
+def event_preview_regenerate(request, pk: int):
+    event = preview_event(request, pk)
+    state = parse_state(event, request.GET)
+    if request.POST.get("confirm") != "1":
+        return render_preview(request, event, state, confirm="regenerate")
+    try:
+        schedule = regenerate(event)
+    except (scheduler.ScheduleError, EditRefused) as exc:
+        messages.error(request, str(exc))
+    else:
+        games = len(schedule.matches)
+        weeks = len({m.week for m in schedule.matches})
+        messages.success(request, regenerated_message(games, weeks))
+    return redirect(_preview_url(event, state))
+
+
+@admin_required
+@require_POST
+def event_preview_publish(request, pk: int):
+    event = preview_event(request, pk)
+    state = parse_state(event, request.GET)
+    if request.POST.get("confirm") != "1":
+        return render_preview(request, event, state, confirm="publish")
+    try:
+        publish(event)
+    except EditRefused as exc:
+        messages.error(request, str(exc))
+        return redirect(_preview_url(event, state))
+    messages.success(request, f"{event.name} published")
+    return redirect(optional_reverse("event_schedule", event.pk) or reverse("event_list"))
