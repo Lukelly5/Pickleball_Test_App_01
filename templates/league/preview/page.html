@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% block title %}Schedule Preview · Stryde{% endblock %}
+{% block title %}Schedule Preview{% endblock %}
 {% block page_title %}{{ event.name }}{% endblock %}
 {% block page_meta %}{% if event.status == "published" %}{% include "components/status_badge.html" with value="published" label="Published" only %}{% else %}{% include "components/status_badge.html" with value="draft" label="Draft · not visible to players" only %}{% endif %}{% endblock %}
 {% block page_actions %}{% if has_matches %}

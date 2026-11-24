@@ -24,8 +24,18 @@ python -m venv .venv
 Admins create a league at `/events/new/` (the "Create" button on My Events). It is a five-step wizard: Basics, Scoring, Flights, Teams, Games plan.
 
 - Each step saves a draft as you go, so you can leave and resume from `/events/<id>/setup/`, which opens the first unfinished step.
-- Generate (on the last step) saves a draft schedule. The preview page for it arrives in the next slice; for now you land back on My Events.
+- Generate (on the last step) saves a draft schedule and opens the Schedule Preview.
 - Setup locks once any score is entered: weeks, courts, scoring, flights, teams and the games plan can no longer change. Only the name and player score entry stay editable.
+
+## Review and publish a schedule
+
+After Generate, the schedule opens at `/events/<id>/preview/` (My Events links to it too). Use the week tabs and the Division and Flight filters to look through it.
+
+- Swap two games, swap two teams, or move a game into an open court: click one tile, then click another. A clash (a team on two courts in the same round, a move to another week, a scored or withdrawn game) is refused with a message and nothing changes.
+- The fairness panel under the grid shows games per team, season totals, repeat pairings and the longest sit for the week.
+- Regenerate replaces every game, including your swaps and moves. It asks first and is refused once a score has been entered.
+- Publish asks first and is blocked while the setup inputs have changed since the schedule was made ("Regenerate first").
+- A published league can still be edited in setup. The wizard shows warnings: renames show up right away, removing a team or flight removes its games immediately, and other changes apply when you regenerate.
 
 ## Demo data
 
