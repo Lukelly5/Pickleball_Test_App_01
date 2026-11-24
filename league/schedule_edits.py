@@ -6,9 +6,9 @@ rows to engine slots and writes only the rows that changed.
 """
 
 import scheduler
-from django.db import models, transaction
+from django.db import transaction
 
-from league.models import Event, GameScore, Match
+from league.models import Event, Match
 from league.scheduling import generate_event, load_schedule
 from league.setup_preview import plan_views
 
@@ -21,18 +21,7 @@ class EditRefused(Exception):
 
 def scored_match_ids(event: Event) -> set[int]:
     """Matches that are final, forfeited, or have any game score."""
-    matches = Match.objects.filter(flight__division__event=event)
-    ids = set(
-        matches.filter(
-            models.Q(status=Match.Status.FINAL) | models.Q(forfeited_by__isnull=False)
-        ).values_list("pk", flat=True)
-    )
-    ids |= set(
-        GameScore.objects.filter(match__flight__division__event=event).values_list(
-            "match_id", flat=True
-        )
-    )
-    return ids
+    return event.scored_match_ids()
 
 
 def _locked_matches(event: Event, ids) -> tuple[Event, dict[int, Match]]:

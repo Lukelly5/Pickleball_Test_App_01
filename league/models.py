@@ -132,15 +132,24 @@ class Event(models.Model):
             if not self.game_minutes:
                 self.game_minutes = 15
 
-    def has_scores(self) -> bool:
-        """True once any match is final, forfeited, or has a game score."""
+    def scored_match_ids(self) -> set[int]:
+        """Ids of matches that are final, forfeited, or have any game score."""
         matches = Match.objects.filter(flight__division__event=self)
-        return (
+        ids = set(
             matches.filter(
                 models.Q(status=Match.Status.FINAL) | models.Q(forfeited_by__isnull=False)
-            ).exists()
-            or GameScore.objects.filter(match__flight__division__event=self).exists()
+            ).values_list("pk", flat=True)
         )
+        ids |= set(
+            GameScore.objects.filter(match__flight__division__event=self).values_list(
+                "match_id", flat=True
+            )
+        )
+        return ids
+
+    def has_scores(self) -> bool:
+        """True once any match is final, forfeited, or has a game score."""
+        return bool(self.scored_match_ids())
 
     def set_week_count(self, n: int) -> None:
         """Make this event's weeks exactly 1..n, each dated a week apart."""
