@@ -122,6 +122,7 @@ class TeamForm(forms.Form):
         self.org = flight.event.organization
         self.team = team
         self.slots: list[tuple] = []
+        self.roster_changed = False
         search = reverse("player_search", args=[flight.event.pk])
         for field in ("player1", "player2"):
             self.fields[field].widget.attrs.update({
@@ -229,6 +230,9 @@ class TeamForm(forms.Form):
                 for slot in self.slots
             ]
             name = self.cleaned_data["name"].strip()
+            before = (
+                set(self.team.members.values_list("player_id", flat=True)) if self.team else None
+            )
             if self.team:
                 team = self.team
                 team.name = name
@@ -240,6 +244,8 @@ class TeamForm(forms.Form):
             for player in players:
                 if player.pk not in have:
                     TeamMember.objects.create(team=team, player=player)
+            # A rename alone isn't a roster change; a new team or a different set of players is.
+            self.roster_changed = before is None or before != {p.pk for p in players}
         return team
 
 

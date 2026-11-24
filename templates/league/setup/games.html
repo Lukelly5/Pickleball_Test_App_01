@@ -4,7 +4,7 @@
 {% block step_body %}
 {% if confirm_needed %}
 <div role="alert" class="grid gap-3 rounded-[10px] border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
-  <p>Regenerating replaces the current draft schedule.</p>
+  <p>Regenerating replaces the current draft schedule.{% if published %} Players have already seen this schedule.{% endif %}</p>
   <div class="flex flex-wrap gap-3">
     <button type="submit" name="confirm" value="1" formaction="{% url 'event_generate' event.pk %}" class="btn">Regenerate</button>
     <a href="{% url 'event_setup_step' event.pk step %}" class="btn" data-variant="outline">Keep the current schedule</a>

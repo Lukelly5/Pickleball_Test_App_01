@@ -7,6 +7,15 @@
        hx-get="{% url 'event_team_row' event.pk %}?flight={{ flight.pk }}" hx-target="#team-row-slot" hx-swap="innerHTML">+ Add team</a>
     {% endif %}
   </div>
+  {% if deleting_team and published %}
+  <div role="alert" class="grid gap-3 rounded-[10px] border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
+    <p>Delete {{ deleting_team.name }}? This also removes {{ flight.name }}'s games from the published schedule. Regenerate to rebuild them.</p>
+    <div class="flex flex-wrap gap-3">
+      <button type="submit" name="confirm" value="1" class="btn" formaction="{% url 'event_team_delete' event.pk deleting_team.pk %}" formmethod="post">Delete {{ deleting_team.name }}</button>
+      <a href="{% url 'event_setup_step' event.pk 'teams' %}?flight={{ flight.pk }}" class="btn" data-variant="outline">Keep {{ deleting_team.name }}</a>
+    </div>
+  </div>
+  {% endif %}
   <div id="team-row-slot">{% include "league/setup/_team_row.html" %}</div>
   {% for team in teams %}
   <div class="flex items-center justify-between gap-3 border-t border-border py-3">

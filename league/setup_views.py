@@ -85,6 +85,8 @@ def frame_context(event: Event | None, step: str, **extra) -> dict:
         "step_count": len(STEPS),
         "steps": stepper_items(event, step),
         "new": event is None,
+        "published": event is not None
+        and event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED),
         "page_title": "Create league" if event is None else f"Edit league · {event.name}",
         **extra,
     }
@@ -199,8 +201,12 @@ def flights_step(request, event: Event, step: str = "flights"):
             if not removing:
                 return redirect(destination(event, step, request.POST.get("nav", "next")))
     # Flight names come from fixed choices (no user input), so marking them safe keeps the apostrophe literal.
+    published = event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
     warnings = [
-        mark_safe(f"Removing {flight} deletes its {n} {'team' if n == 1 else 'teams'}.")
+        mark_safe(
+            f"Removing {flight} deletes its {n} {'team' if n == 1 else 'teams'}."
+            + (" Its games will also disappear from the published schedule." if published else "")
+        )
         for flight in removing
         for n in [flight.teams.count()]
     ]
@@ -267,6 +273,7 @@ def _team_context(request, event: Event, flight: Flight, form=None, team=None) -
         "editing_team": team,
         "player_options": _player_options(event, limit=50),
         "locked": event.has_scores(),
+        "deleting_team": None if form is not None else _team_of(flight, request.GET.get("delete")),
     }
 
 
@@ -311,7 +318,8 @@ def teams_step(request, event: Event, step: str = "teams"):
         try:
             with editing(event):
                 form.save()
-                mark_stale(event)
+                if form.roster_changed:
+                    mark_stale(event)
                 refresh_grids(event)
         except SetupLocked as exc:
             if nav_only:
@@ -360,6 +368,9 @@ def event_team_delete(request, pk, team_pk):
     event = setup_event(request, pk)
     team = get_object_or_404(Team, pk=team_pk, flight__division__event=event)
     flight_pk = team.flight_id
+    published = event.status in (Event.Status.PUBLISHED, Event.Status.COMPLETED)
+    if published and request.POST.get("confirm") != "1":
+        return redirect(f"{step_url(event, 'teams')}?flight={flight_pk}&delete={team.pk}")
     try:
         with editing(event):
             delete_team(team)

@@ -10,6 +10,9 @@
   {% if locked %}
   <p role="status" class="rounded-[10px] border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">Scores have been entered, so the setup is locked. Individual games can still be moved.</p>
   {% endif %}
+  {% if published %}
+  <p role="status" class="rounded-[10px] border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">This league is published, so players can see its schedule. Renames show up right away. Removing a team or flight removes its games from the schedule immediately. Other changes take effect when you regenerate, which replaces the schedule.</p>
+  {% endif %}
   {% if event.schedule_stale %}
   <p role="status" class="rounded-[10px] border border-warn/30 bg-warn-bg px-3 py-2 text-sm text-warn">You changed the setup since the schedule was made. Regenerate to apply it.</p>
   {% endif %}
