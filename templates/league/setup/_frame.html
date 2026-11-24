@@ -17,7 +17,7 @@
     <h2 class="text-lg font-extrabold text-ink">{{ step_label }}</h2>
     {% block step_body %}{% endblock %}
   </div>
-  <div class="flex items-center justify-between gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
     {% block step_footer %}
     {% if new and step == "basics" %}
     <a href="{% url 'event_list' %}" class="btn" data-variant="outline">Cancel</a>
