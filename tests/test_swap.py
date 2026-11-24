@@ -1,6 +1,6 @@
 import re
 import pytest
-from scheduler import generate, swap_games, swap_teams, SwapConflict, Flight, Match, Schedule, Team
+from scheduler import generate, swap_games, move_game, swap_teams, SwapConflict, Flight, Match, Schedule, Team
 from tests.helpers import make_flight, make_teams
 
 def t1(): return generate([make_flight(4, [2, 2, 2, 2])], courts=2)
@@ -96,3 +96,55 @@ def test_swap_teams_rejects_an_unknown_side(sides):
         swap_teams(t1(), ((1, 1, 1), sides[0]), ((1, 1, 2), sides[1]))
     assert not isinstance(e.value, SwapConflict)
     assert "'a' or 'b'" in str(e.value)
+
+
+# ---- move_game ----
+
+def open_court_schedule():
+    # 8 teams, 3 courts: round 3 of week 1 has only 2 games, so (1, 3, 3) is open.
+    # Round 3 is played by T2, T3, T4, T5; T1, T6, T7, T8 sit out.
+    return generate([make_flight(8, [2] * 7)], courts=3)
+
+
+def test_move_into_open_court():
+    s = open_court_schedule()
+    assert not any((m.week, m.round_no, m.court_no) == (1, 3, 3) for m in s.matches)
+    src = next(m for m in s.matches if (m.week, m.round_no, m.court_no) == (1, 1, 1))  # T1 v T8
+    before = list(s.matches)
+    moved = move_game(s, (1, 1, 1), (1, 3, 3))
+    assert len(moved.matches) == len(s.matches)
+    mm = next(m for m in moved.matches
+              if (m.week, m.team_a.id, m.team_b.id) == (1, src.team_a.id, src.team_b.id))
+    assert (mm.round_no, mm.court_no) == (3, 3)
+    assert list(s.matches) == before                  # input untouched
+
+
+def test_move_same_slot_is_noop():
+    s = t1()
+    assert move_game(s, (1, 1, 1), (1, 1, 1)) is s
+
+
+@pytest.mark.parametrize("target,message", [
+    ((2, 1, 1), "Can't move: games must stay in the same week."),
+    ((1, 1, 2), "Can't move: Court 2 in Round 1 already has a game."),
+    ((1, 3, 1), "Can't move: Week 1 only has Rounds 1–2."),
+    ((1, 1, 3), "Can't move: there are only 2 courts."),
+])
+def test_move_rejections(target, message):
+    with pytest.raises(SwapConflict) as e:
+        move_game(t1(), (1, 1, 1), target)
+    assert str(e.value) == message
+
+
+def test_move_clash_message():
+    s = open_court_schedule()
+    # (1, 1, 2) is T2 v T7; T2 already plays in round 3.
+    with pytest.raises(SwapConflict) as e:
+        move_game(s, (1, 1, 2), (1, 3, 3))
+    assert re.fullmatch(
+        r"Can't move: Team T\d would play on Court \d and Court \d in Round \d\.", str(e.value))
+
+
+def test_move_unknown_slot_raises_keyerror():
+    with pytest.raises(KeyError):
+        move_game(t1(), (1, 9, 9), (1, 1, 1))

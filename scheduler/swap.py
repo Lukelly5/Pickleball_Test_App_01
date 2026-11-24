@@ -36,7 +36,7 @@ def _clash(a: Match, b: Match) -> str | None:
     return None
 
 
-def _check_week(schedule: Schedule, week: int) -> None:
+def _check_week(schedule: Schedule, week: int, verb: str = "swap") -> None:
     rounds: dict[int, list[Match]] = {}
     for m in schedule.week(week):
         rounds.setdefault(m.round_no, []).append(m)
@@ -47,7 +47,7 @@ def _check_week(schedule: Schedule, week: int) -> None:
                 who = _clash(a, b)
                 if who is not None:
                     raise SwapConflict(
-                        f"Can't swap: {who} would play on Court {a.court_no} "
+                        f"Can't {verb}: {who} would play on Court {a.court_no} "
                         f"and Court {b.court_no} in Round {round_no}."
                     )
 
@@ -99,4 +99,29 @@ def swap_teams(
     matches = tuple(replacements.get(id(m), m) for m in schedule.matches)
     candidate = Schedule(matches, schedule.courts)
     _check_week(candidate, ma.week)
+    return candidate
+
+
+def move_game(schedule: Schedule, slot: Slot, target: Slot) -> Schedule:
+    m = _find(schedule, slot)
+    if slot == target:
+        return schedule
+    week, round_no, court_no = target
+    if week != m.week:
+        raise SwapConflict("Can't move: games must stay in the same week.")
+    if court_no > schedule.courts:
+        n = schedule.courts
+        there = "there is only 1 court" if n == 1 else f"there are only {n} courts"
+        raise SwapConflict(f"Can't move: {there}.")
+    max_round = max(g.round_no for g in schedule.week(week))
+    if round_no > max_round:
+        raise SwapConflict(f"Can't move: Week {week} only has Rounds 1–{max_round}.")
+    if any((g.week, g.round_no, g.court_no) == target for g in schedule.matches):
+        raise SwapConflict(
+            f"Can't move: Court {court_no} in Round {round_no} already has a game."
+        )
+    moved = replace(m, round_no=round_no, court_no=court_no)
+    matches = [g for g in schedule.matches if g is not m]
+    candidate = Schedule(tuple(matches) + (moved,), schedule.courts)
+    _check_week(candidate, week, verb="move")
     return candidate
