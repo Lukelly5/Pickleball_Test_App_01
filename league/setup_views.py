@@ -231,11 +231,7 @@ def _flight_notes(flight: Flight) -> list[str]:
     notes = []
     if len(teams) < 2:
         notes.append(f"Add at least 2 teams to {flight.name} before generating.")
-    notes += [
-        f"{t.name} needs exactly 2 players before generating."
-        for t in teams
-        if len(t.members.all()) != 2
-    ]
+    notes += [t.roster_problem() for t in teams if not t.roster_ok()]
     return notes
 
 

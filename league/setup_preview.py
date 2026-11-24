@@ -58,9 +58,9 @@ def plan_views(
         if n < 2:
             blocker = f"Add at least 2 teams to {flight.name} before generating."
         else:
-            bad = next((t for t in teams if len(t.members.all()) != 2), None)
+            bad = next((t for t in teams if not t.roster_ok()), None)
             if bad is not None:
-                blocker = f"{bad.name} needs exactly 2 players before generating."
+                blocker = bad.roster_problem()
             elif not grid:
                 blocker = _preset_error(plan, n, weeks)
         notes = []

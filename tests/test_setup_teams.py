@@ -204,7 +204,7 @@ def test_next_with_invalid_row_stays_with_error(client, setup):
     response = client.post(
         teams_url(event, flight), {**row(player2=""), "flight": flight.pk, "nav": "next"}
     )
-    assert response.status_code == 200 and "This field is required." in response.content.decode()
+    assert response.status_code == 200 and "Add both players, or leave both blank." in response.content.decode()
     assert not Team.objects.filter(name="Dinkers").exists()
 
 
@@ -247,3 +247,52 @@ def test_other_orgs_event_404s_for_row_and_delete(client, setup):
     assert client.get(f"/events/{other.pk}/setup/teams/row/").status_code == 404
     assert client.post(f"/events/{other.pk}/setup/teams/{team.pk}/delete/").status_code == 404
     assert Team.objects.filter(pk=team.pk).exists()
+
+
+BLANK_PLAYERS = {"player1": "", "player1_email": "", "player2": "", "player2_email": ""}
+
+
+def test_team_with_no_players(client, setup):
+    event, flight = setup
+    assert post_team(client, event, flight, **BLANK_PLAYERS).status_code == 302
+    team = Team.objects.get(name="Dinkers")
+    assert team.members.count() == 0 and not Player.objects.exists()
+    page = client.get(f"/events/{event.pk}/setup/teams/?flight={flight.pk}").content.decode()
+    assert "No players named" in page
+
+
+@pytest.mark.parametrize("fields", [
+    {"player2": "", "player2_email": ""},
+    {"player1": "", "player1_email": ""},
+    {**BLANK_PLAYERS, "player1_email": "sam@example.com"},
+])
+def test_half_filled_players_rejected(client, setup, fields):
+    event, flight = setup
+    page = html.unescape(post_team(client, event, flight, **fields).content.decode())
+    assert "Add both players, or leave both blank." in page
+    assert not Team.objects.exists() and not Player.objects.exists()
+
+
+def test_edit_team_clearing_both_players(client, setup):
+    event, flight = setup
+    team = add_team(flight, "Dinkers")
+    assert post_team(client, event, flight, team=team.pk, **BLANK_PLAYERS).status_code == 302
+    assert team.members.count() == 0
+
+
+def test_teams_step_done_with_nameless_teams(setup):
+    from league.setup import _flight_teams_ready
+    _, flight = setup
+    add_team(flight, "A", players=()); add_team(flight, "B", players=())
+    assert _flight_teams_ready(flight)
+    add_team(flight, "C", players=(add_player(flight.event.organization, "Solo"),))
+    assert not _flight_teams_ready(flight)
+
+
+def test_generate_with_nameless_teams(setup):
+    _, flight = setup
+    flight.games_plan = "custom"; flight.games_per_team_by_week = [1, 1, 1, 1]; flight.save()
+    for n in "ABCD":
+        add_team(flight, n, players=())
+    generate_event(flight.event)
+    assert Match.objects.filter(flight=flight).count() == 8

@@ -12,7 +12,7 @@
   <div class="flex items-center justify-between gap-3 border-t border-border py-3">
     <div>
       <p class="font-semibold text-ink">{{ team.name }}</p>
-      <p class="text-sm text-muted-foreground">{% for member in team.members.all %}{{ member.player.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      <p class="text-sm text-muted-foreground">{% for member in team.members.all %}{{ member.player.name }}{% if not forloop.last %}, {% endif %}{% empty %}No players named{% endfor %}</p>
     </div>
     {% if not locked %}
     <div class="flex gap-2">

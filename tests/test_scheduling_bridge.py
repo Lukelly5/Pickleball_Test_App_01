@@ -117,7 +117,7 @@ def test_team_with_one_player_is_rejected():
     event = t1_event()
     team = Team.objects.get(name="Dinkers")
     team.members.last().delete()
-    with pytest.raises(ScheduleError, match="Dinkers needs exactly 2 players before generating."):
+    with pytest.raises(ScheduleError, match="Dinkers has only 1 player. Add a second player, or remove both, before generating."):
         generate_event(event)
 
 

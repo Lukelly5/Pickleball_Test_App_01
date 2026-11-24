@@ -9,7 +9,7 @@ class ScheduleError(ValueError):
 class Team:
     id: str
     name: str
-    players: tuple[str, str]
+    players: tuple[str, ...]  # 2 names, or none when the team's players aren't named
 
 
 @dataclass(frozen=True)

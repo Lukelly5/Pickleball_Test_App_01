@@ -103,9 +103,9 @@ _EMAIL_SUFFIX = re.compile(r"^(?P<name>.*?)\s*<(?P<email>[^<>]+)>$")
 
 class TeamForm(forms.Form):
     name = forms.CharField(max_length=120)
-    player1 = forms.CharField(max_length=200, label="Player 1")
+    player1 = forms.CharField(max_length=200, required=False, label="Player 1")
     player1_email = forms.EmailField(required=False, label="Player 1 email (new players)")
-    player2 = forms.CharField(max_length=200, label="Player 2")
+    player2 = forms.CharField(max_length=200, required=False, label="Player 2")
     player2_email = forms.EmailField(required=False, label="Player 2 email (new players)")
     team = forms.IntegerField(required=False, widget=forms.HiddenInput)
 
@@ -184,6 +184,14 @@ class TeamForm(forms.Form):
             clash = clash.exclude(pk=self.team.pk)
         if existing := clash.first():
             self.add_error("name", f"There's already a team called {existing.name} in this flight.")
+        # Players are optional, but a team names both of them or neither.
+        filled = [bool(cleaned.get(f"player{i}", "").strip()) for i in (1, 2)]
+        if not any(filled) and not any(cleaned.get(f"player{i}_email") for i in (1, 2)):
+            self.slots = []
+            return cleaned
+        if not all(filled):
+            self.add_error(None, "Add both players, or leave both blank.")
+            return cleaned
         slots = [self._resolve("player1"), self._resolve("player2")]
         if None in slots:
             return cleaned

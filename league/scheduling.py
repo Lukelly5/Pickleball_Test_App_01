@@ -76,10 +76,8 @@ def _check_ready(event: Event) -> None:
     for team in Team.objects.filter(
         flight__division__event=event, withdrawn_at__isnull=True
     ).order_by("flight__division__pk", "flight__pk", "pk"):
-        if team.members.count() != 2:
-            raise scheduler.ScheduleError(
-                f"{team.name} needs exactly 2 players before generating."
-            )
+        if problem := team.roster_problem():
+            raise scheduler.ScheduleError(problem)
     for flight in flights:
         games = flight.games_per_team_by_week
         if not isinstance(games, list) or not all(

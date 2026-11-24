@@ -116,7 +116,7 @@ def delete_team(team: Team) -> None:
 
 def _flight_teams_ready(flight: Flight) -> bool:
     teams = list(active_teams(flight).prefetch_related("members"))
-    return len(teams) >= 2 and all(len(t.members.all()) == 2 for t in teams)
+    return len(teams) >= 2 and all(t.roster_ok() for t in teams)
 
 
 def step_done(event: Event) -> dict[str, bool]:

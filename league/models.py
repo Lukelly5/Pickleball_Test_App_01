@@ -243,6 +243,15 @@ class Team(models.Model):
     def __str__(self):
         return self.name
 
+    def roster_ok(self) -> bool:
+        """Players are optional: a team names both of its players or none of them."""
+        return len(self.members.all()) in (0, 2)
+
+    def roster_problem(self) -> str | None:
+        if self.roster_ok():
+            return None
+        return f"{self.name} has only 1 player. Add a second player, or remove both, before generating."
+
 
 class TeamMember(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="members")

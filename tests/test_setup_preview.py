@@ -51,7 +51,10 @@ def test_blockers():
     flight.teams.first().members.first().delete()
     add_team(flight, "Second")
     (view,), _ = plan_views(event)
-    assert view.blocker == "mens0 needs exactly 2 players before generating."
+    assert view.blocker == "mens0 has only 1 player. Add a second player, or remove both, before generating."
+    flight.teams.first().members.all().delete()
+    (view,), _ = plan_views(event)
+    assert view.blocker is None
 
 
 def test_preset_error_blocks():
