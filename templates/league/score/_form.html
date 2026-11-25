@@ -14,7 +14,7 @@
     </form>
   </div>
   {% endif %}
-  <form method="post" action="{% url 'match_score' event.pk match.pk %}" id="score-form" class="grid gap-4"{% if live %} hx-post="{% url 'match_score' event.pk match.pk %}" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML"{% endif %}>{% csrf_token %}
+  <form method="post" action="{% url 'match_score' event.pk match.pk %}" id="score-form" class="grid gap-4"{% if live %} hx-post="{% url 'match_score' event.pk match.pk %}" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML" hx-sync="this:queue last"{% endif %}>{% csrf_token %}
     <div id="score-body" class="grid gap-4">
     <div class="grid grid-cols-[auto_1fr_1fr] items-center gap-x-3 gap-y-2">
       <span></span>
@@ -23,11 +23,15 @@
       {% for row in rows %}
       <span class="text-sm font-semibold text-muted-foreground">Game {{ row.n }}</span>
       <span class="flex items-center gap-1">
-        <input id="score-g{{ row.n }}a" name="g{{ row.n }}a" value="{{ row.a }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off"{% if live %} hx-post="{% url 'match_score_check' event.pk match.pk %}" hx-trigger="change" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML" hx-include="#score-form"{% endif %} aria-label="Game {{ row.n }}, {{ match.team_a.name }}" class="h-11 w-[54px] rounded-[10px] border text-center text-xl font-extrabold tabular-nums text-ink focus:outline-none focus:ring-2 focus:ring-ring {% if row.winner == 'a' %}border-progress bg-progress{% else %}border-border bg-card{% endif %}">
+        <span class="h-11 w-[54px] rounded-[10px] border {% if row.winner == 'a' %}border-progress bg-progress{% else %}border-border bg-card{% endif %}">
+          <input id="score-g{{ row.n }}a" name="g{{ row.n }}a" value="{{ row.a }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off"{% if live %} hx-post="{% url 'match_score_check' event.pk match.pk %}" hx-trigger="change" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML" hx-include="#score-form" hx-sync="closest form:queue last"{% endif %}{% if preserve %} hx-preserve{% endif %} aria-label="Game {{ row.n }}, {{ match.team_a.name }}" class="h-full w-full rounded-[10px] bg-transparent text-center text-xl font-extrabold tabular-nums text-ink focus:outline-none focus:ring-2 focus:ring-ring">
+        </span>
         {% if row.winner == "a" %}<span aria-hidden="true" class="text-sm font-bold text-ink">✓</span>{% endif %}
       </span>
       <span class="flex items-center gap-1">
-        <input id="score-g{{ row.n }}b" name="g{{ row.n }}b" value="{{ row.b }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off"{% if live %} hx-post="{% url 'match_score_check' event.pk match.pk %}" hx-trigger="change" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML" hx-include="#score-form"{% endif %} aria-label="Game {{ row.n }}, {{ match.team_b.name }}" class="h-11 w-[54px] rounded-[10px] border text-center text-xl font-extrabold tabular-nums text-ink focus:outline-none focus:ring-2 focus:ring-ring {% if row.winner == 'b' %}border-progress bg-progress{% else %}border-border bg-card{% endif %}">
+        <span class="h-11 w-[54px] rounded-[10px] border {% if row.winner == 'b' %}border-progress bg-progress{% else %}border-border bg-card{% endif %}">
+          <input id="score-g{{ row.n }}b" name="g{{ row.n }}b" value="{{ row.b }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off"{% if live %} hx-post="{% url 'match_score_check' event.pk match.pk %}" hx-trigger="change" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML" hx-include="#score-form" hx-sync="closest form:queue last"{% endif %}{% if preserve %} hx-preserve{% endif %} aria-label="Game {{ row.n }}, {{ match.team_b.name }}" class="h-full w-full rounded-[10px] bg-transparent text-center text-xl font-extrabold tabular-nums text-ink focus:outline-none focus:ring-2 focus:ring-ring">
+        </span>
         {% if row.winner == "b" %}<span aria-hidden="true" class="text-sm font-bold text-ink">✓</span>{% endif %}
       </span>
       {% endfor %}

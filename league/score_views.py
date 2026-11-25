@@ -62,6 +62,7 @@ def render_score(
     step: str = "form",
     confirm: str | None = None,
     status: int = 200,
+    preserve: bool = False,
 ):
     """check=None is a fresh form: saved values, and no messages shown."""
     admin = request.user.is_admin
@@ -96,6 +97,7 @@ def render_score(
         "confirm": confirm,
         "step": step,
         "live": live,
+        "preserve": preserve,
         "partial": partial,
         "week_url": reverse("event_schedule", args=[event.pk]) + f"?week={match.week.number}",
     }
@@ -183,7 +185,8 @@ def match_score_check(request, pk: int, match_pk: int):
         return guard
     if not can_score(request.user, match, timezone.localdate()):
         raise PermissionDenied
-    return render_score(request, event, match, _read_check(request, event, match))
+    # hx-preserve keeps the boxes the user is typing in; it is only safe for a swap within the same sheet.
+    return render_score(request, event, match, _read_check(request, event, match), preserve=True)
 
 
 @login_required

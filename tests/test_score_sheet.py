@@ -93,3 +93,31 @@ def test_dialog_on_app_page_not_share(client, league, m2):
 
 def test_vary_header(client, league, m2):
     assert "HX-Request" in client.get(score_url(m2))["Vary"]
+
+
+def test_card_open_guarded_on_success(client, league, m2):
+    card = card_html(schedule(client, league), m2)
+    assert "event.detail.successful" in card and "showModal" in card
+    assert card.index("event.detail.successful") < card.index("showModal")
+
+
+def test_live_form_serializes_requests(client, league, m2):
+    html = client.get(score_url(m2), **HX).content.decode()
+    form = html.split('id="score-form"')[1].split(">")[0]
+    assert 'hx-sync="this:queue last"' in form
+    inputs = [chunk.split(">")[0] for chunk in html.split("<input")[1:] if "score-g" in chunk.split(">")[0]]
+    assert inputs and all('hx-sync="closest form:queue last"' in i for i in inputs)
+
+
+def test_check_response_preserves_inputs_but_sheet_load_does_not(client, league, m2):
+    check = client.post(score_url(m2, "check/"), {"g1a": "11", "g1b": "7"}, **HX).content.decode()
+    inputs = [chunk.split(">")[0] for chunk in check.split("<input")[1:] if "score-g" in chunk.split(">")[0]]
+    assert inputs and all("hx-preserve" in i for i in inputs)
+    sheet = client.get(score_url(m2), **HX).content.decode()
+    assert "hx-preserve" not in sheet
+
+
+def test_winner_highlight_is_on_wrapper_not_input(client, league, m2):
+    r = client.post(score_url(m2, "check/"), {"g1a": "11", "g1b": "7"}, **HX).content.decode()
+    inp = r.split('id="score-g1a"')[1].split(">")[0]
+    assert "bg-progress" not in inp
