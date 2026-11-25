@@ -1,0 +1,18 @@
+<div class="card grid gap-4 p-4 md:p-5">
+  <p class="text-sm font-semibold text-muted-foreground">Wk {{ match.week.number }} · R{{ match.round_no }} · Court {{ match.court_no }}</p>
+  <form method="post" action="{% url 'match_forfeit' event.pk match.pk %}" class="grid gap-4">{% csrf_token %}
+    <fieldset class="grid gap-2">
+      <legend class="mb-1 text-base font-extrabold text-ink">Which team forfeited?</legend>
+      {% for team in match_teams %}
+      <label class="flex items-center gap-2 text-sm font-semibold text-ink"><input type="radio" name="team" value="{{ team.pk }}"> {{ team.name }}</label>
+      {% endfor %}
+    </fieldset>
+    {% for message in messages_shown %}
+    <p role="alert" class="rounded-[10px] border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{{ message.text }}</p>
+    {% endfor %}
+    <div class="flex flex-wrap gap-3">
+      <button type="submit" class="btn text-ink">Save forfeit</button>
+      <a href="{% url 'match_score' event.pk match.pk %}" class="btn" data-variant="outline">Back</a>
+    </div>
+  </form>
+</div>

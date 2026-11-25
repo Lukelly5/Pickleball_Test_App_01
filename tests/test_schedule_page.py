@@ -181,3 +181,19 @@ def test_query_count_flat(setup, django_assert_max_num_queries):
     event, men = setup[:2]
     with django_assert_max_num_queries(12):
         build_page(event, ScheduleState(1, "", men.pk, False), MAR(9))
+
+
+def test_card_last_edited_name_and_scored(setup, django_assert_max_num_queries):
+    from tests.factories import admin_of
+
+    event, men = setup[:2]
+    m1, m2 = men_matches(men)[:2]
+    user = admin_of(event.organization)
+    score(m1, 11, 9, 1)
+    Match.objects.filter(pk=m1.pk).update(status="final", last_edited_by=user)
+    p = page(event)
+    c1, c2 = card_of(p, m1), card_of(p, m2)
+    assert c1.scored and c1.last_edited_name == user.email
+    assert not c2.scored and c2.last_edited_name == ""
+    with django_assert_max_num_queries(12):
+        page(event)

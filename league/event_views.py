@@ -18,6 +18,7 @@ from ui.nav import NavLink, optional_reverse
 
 from .display import short_day
 from .models import Event, Team
+from .score_edits import scorable_ids
 from .schedule_page import build_page, next_game_night, read_state, tonight_week
 
 TABS = (
@@ -97,12 +98,17 @@ def render_schedule(request, event, *, token: str | None = None):
     today = timezone.localdate()
     state = read_state(event, request.GET, today)
     page = build_page(event, state, today, _my_team_ids(request, event, token))
+    scorable = frozenset()
+    if token is None:
+        match_ids = [c.match_id for r in page.rounds for c in r.cards]
+        scorable = scorable_ids(request.user, event, match_ids, today)
     filters = {} if state.tonight else {
         k: v for k, v in (("division", state.division), ("flight", state.flight)) if v
     }
     context = {
         **_frame(request, event, "schedule", token),
         "page": page,
+        "scorable": scorable,
         "swap_body": True,
         "filter_query": urlencode(filters),
         "week_day": short_day(page.week_date) if page.week_date else "",

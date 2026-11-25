@@ -7,6 +7,7 @@ from django.http import QueryDict
 
 from league.filters import filter_options, read_filters, to_int
 from league.models import Event, Match, Team, Week
+from league.score_edits import editor_name
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,11 @@ class Card:
     status: str  # Match.Status value
     forfeit: bool
     winner_name: str  # "" when no winner
+    last_edited_name: str  # "" when nobody has edited the score
+
+    @property
+    def scored(self) -> bool:
+        return self.status == Match.Status.FINAL or self.forfeit or any(s.chips for s in self.sides)
 
     @property
     def faded(self) -> bool:
@@ -137,7 +143,7 @@ class SchedulePage:
 _NOT_PLAYED = (Match.Status.CANCELLED, Match.Status.VOID)
 
 
-def _card(match: Match, my_team_ids: frozenset[int]) -> Card:
+def card_for(match: Match, my_team_ids: frozenset[int]) -> Card:
     forfeit = match.forfeited_by_id is not None
     level = match.flight.division.level
     games = sorted(match.games.all(), key=lambda g: g.game_no)
@@ -172,6 +178,7 @@ def _card(match: Match, my_team_ids: frozenset[int]) -> Card:
         match.status,
         forfeit,
         match.winner.name if match.winner else "",
+        editor_name(match.last_edited_by),
     )
 
 
@@ -184,7 +191,9 @@ def _rounds(
     elif state.division:
         matches = matches.filter(flight__division__level=state.division)
     matches = list(
-        matches.select_related("flight__division", "team_a", "team_b", "winner")
+        matches.select_related(
+            "flight__division", "team_a", "team_b", "winner", "last_edited_by__player"
+        )
         .prefetch_related("games")
         .order_by("round_no", "court_no")
     )
@@ -204,7 +213,7 @@ def _rounds(
         rounds.append(
             Round(
                 number,
-                [_card(m, my_team_ids) for m in in_round],
+                [card_for(m, my_team_ids) for m in in_round],
                 sorted(t.name for t in flight_teams if t.pk not in playing),
             )
         )

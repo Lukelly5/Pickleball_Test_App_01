@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import event_views, preview_views, setup_views, views
+from . import event_views, preview_views, score_views, setup_views, views
 
 urlpatterns = [
     path("events/", views.event_list, name="event_list"),
@@ -25,6 +25,22 @@ urlpatterns = [
     path("events/<int:pk>/teams/", event_views.event_teams, name="event_teams"),
     path("events/<int:pk>/settings/", event_views.event_settings, name="event_settings"),
     path("events/<int:pk>/settings/share/reset/", event_views.event_share_reset, name="event_share_reset"),
+    path("events/<int:pk>/matches/<int:match_pk>/score/", score_views.match_score, name="match_score"),
+    path(
+        "events/<int:pk>/matches/<int:match_pk>/score/check/",
+        score_views.match_score_check,
+        name="match_score_check",
+    ),
+    path(
+        "events/<int:pk>/matches/<int:match_pk>/score/forfeit/",
+        score_views.match_forfeit,
+        name="match_forfeit",
+    ),
+    path(
+        "events/<int:pk>/matches/<int:match_pk>/score/clear/",
+        score_views.match_score_clear,
+        name="match_score_clear",
+    ),
     path("s/<str:token>/schedule/", event_views.share_schedule, name="share_schedule"),
     path("s/<str:token>/standings/", event_views.share_standings, name="share_standings"),
     path("s/<str:token>/teams/", event_views.share_teams, name="share_teams"),

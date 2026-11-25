@@ -1,0 +1,7 @@
+{% extends "base_app.html" %}
+{% block title %}Enter score{% endblock %}
+{% block page_title %}Enter score{% endblock %}
+{% block page_meta %}Wk {{ match.week.number }} · R{{ match.round_no }} · Court {{ match.court_no }} · {{ match.flight.name }}{% endblock %}
+{% block content %}
+<div class="mx-auto w-full max-w-[560px]" id="score-sheet">{% include partial %}</div>
+{% endblock %}

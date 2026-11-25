@@ -1,0 +1,51 @@
+<div class="card grid gap-4 p-4 md:p-5">
+  <div class="flex items-center justify-between gap-3">
+    <a href="{{ week_url }}" class="text-sm font-semibold text-brand">Cancel</a>
+    <p class="text-sm font-semibold text-muted-foreground">Wk {{ match.week.number }} · R{{ match.round_no }} · Court {{ match.court_no }}</p>
+  </div>
+  <p class="text-sm font-semibold text-ink">{{ format_label }}</p>
+  {% if confirm == "clear" %}
+  <div role="alert" class="grid gap-3 rounded-[10px] border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
+    <p>Clear the score for {{ match.team_a.name }} vs {{ match.team_b.name }}? The match goes back to unscored.</p>
+    <form method="post" action="{% url 'match_score_clear' event.pk match.pk %}" class="flex flex-wrap gap-3">{% csrf_token %}
+      <button type="submit" name="confirm" value="1" class="btn text-ink">Clear score</button>
+      <a href="{% url 'match_score' event.pk match.pk %}" class="btn" data-variant="outline">Cancel</a>
+    </form>
+  </div>
+  {% endif %}
+  <form method="post" action="{% url 'match_score' event.pk match.pk %}" id="score-form" class="grid gap-4">{% csrf_token %}
+    <div class="grid grid-cols-[auto_1fr_1fr] items-center gap-x-3 gap-y-2">
+      <span></span>
+      <span class="truncate text-sm font-semibold text-ink">{{ match.team_a.name }}</span>
+      <span class="truncate text-sm font-semibold text-ink">{{ match.team_b.name }}</span>
+      {% for row in rows %}
+      <span class="text-sm font-semibold text-muted-foreground">Game {{ row.n }}</span>
+      <span class="flex items-center gap-1">
+        <input id="score-g{{ row.n }}a" name="g{{ row.n }}a" value="{{ row.a }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Game {{ row.n }}, {{ match.team_a.name }}" class="h-11 w-[54px] rounded-[10px] border text-center text-xl font-extrabold tabular-nums text-ink focus:outline-none focus:ring-2 focus:ring-ring {% if row.winner == 'a' %}border-progress bg-progress{% else %}border-border bg-card{% endif %}">
+        {% if row.winner == "a" %}<span aria-hidden="true" class="text-sm font-bold text-ink">✓</span>{% endif %}
+      </span>
+      <span class="flex items-center gap-1">
+        <input id="score-g{{ row.n }}b" name="g{{ row.n }}b" value="{{ row.b }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Game {{ row.n }}, {{ match.team_b.name }}" class="h-11 w-[54px] rounded-[10px] border text-center text-xl font-extrabold tabular-nums text-ink focus:outline-none focus:ring-2 focus:ring-ring {% if row.winner == 'b' %}border-progress bg-progress{% else %}border-border bg-card{% endif %}">
+        {% if row.winner == "b" %}<span aria-hidden="true" class="text-sm font-bold text-ink">✓</span>{% endif %}
+      </span>
+      {% endfor %}
+    </div>
+    {% if check.result %}<p class="rounded-[10px] bg-progress px-3 py-2 text-sm font-bold text-ink">{{ check.result }}</p>{% endif %}
+    {% for message in messages_shown %}
+    <p role="alert" class="rounded-[10px] border px-3 py-2 text-sm {% if message.blocking %}border-danger/30 bg-danger/5 text-danger{% else %}border-warn/30 bg-warn-bg text-warn{% endif %}">{{ message.text }}</p>
+    {% endfor %}
+    {% if is_admin %}
+    <div class="flex flex-wrap items-center gap-3 text-sm font-semibold">
+      <a href="{% url 'match_forfeit' event.pk match.pk %}" class="text-brand">Mark forfeit</a>
+      {% if scored %}<button type="submit" formaction="{% url 'match_score_clear' event.pk match.pk %}" formnovalidate class="font-semibold text-danger">Clear score</button>{% endif %}
+    </div>
+    {% endif %}
+    <div class="sticky bottom-0 -mx-4 border-t border-border bg-card px-4 py-3 md:static md:mx-0 md:border-0 md:p-0">
+      {% if messages_shown and check.save_anyway %}
+      <button type="submit" name="anyway" value="1" class="btn w-full text-ink">Save anyway</button>
+      {% else %}
+      <button type="submit" class="btn w-full text-ink"{% if blocked %} disabled{% endif %}>Save score</button>
+      {% endif %}
+    </div>
+  </form>
+</div>
