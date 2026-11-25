@@ -1,0 +1,11 @@
+{% extends base_template %}
+{% block title %}{{ label }} · {{ event.name }}{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}mx-auto w-full max-w-[1200px] px-4 pb-16{% endblock %}
+{% block content %}
+{% include "league/event/_header.html" %}
+<div class="card px-6 py-12 text-center">
+  <h2 class="text-lg font-extrabold text-ink">{{ label }}</h2>
+  <p class="mt-1 text-sm text-muted-foreground">Coming soon</p>
+</div>
+{% endblock %}

@@ -42,6 +42,7 @@ Blocks: page_title, page_meta, page_actions, content.
 </header>
 
 <main class="mx-auto w-full max-w-[1200px] px-4 pt-5 pb-24 md:px-6 md:pt-8 md:pb-10">
+  {% block page_header %}
   <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0">
       <h1 class="text-[22px] font-extrabold leading-tight text-ink md:text-[28px]">{% block page_title %}{% endblock %}</h1>
@@ -49,6 +50,7 @@ Blocks: page_title, page_meta, page_actions, content.
     </div>
     <div class="flex items-center gap-2">{% block page_actions %}{% endblock %}</div>
   </div>
+  {% endblock %}
   {% block content %}{% endblock %}
 </main>
 

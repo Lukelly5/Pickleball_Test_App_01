@@ -1,0 +1,8 @@
+{% extends base_template %}
+{% block title %}{{ event.name }}{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}mx-auto w-full max-w-[1200px] px-4 pb-16{% endblock %}
+{% block content %}
+{% include "league/event/_header.html" %}
+<div id="event-body">{% include "league/event/_schedule_body.html" %}</div>
+{% endblock %}

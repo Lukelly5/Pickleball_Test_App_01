@@ -119,7 +119,7 @@ def test_publish_asks_first(client, league):
 
 def test_publish_confirmed(client, league):
     r = client.post(pub(league), {"confirm": "1"})
-    assert r.status_code == 302 and r["Location"] == "/events/"
+    assert r.status_code == 302 and r["Location"] == f"/events/{league.pk}/schedule/"
     assert toasts(r) == ["Spring Tuesday League published"]
     league.refresh_from_db()
     assert league.status == Event.Status.PUBLISHED

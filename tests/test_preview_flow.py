@@ -71,8 +71,8 @@ def test_generate_edit_publish(client):
     event.refresh_from_db()
     assert event.status == Event.Status.PUBLISHED
 
-    # My Events links the row to the preview; setup shows the published banner.
-    assert f'href="/events/{event.pk}/preview/"' in client.get("/events/").content.decode()
+    # My Events links the row to the schedule; setup shows the published banner.
+    assert f'href="/events/{event.pk}/schedule/"' in client.get("/events/").content.decode()
     assert BANNER in client.get(f"/events/{event.pk}/setup/games/").content.decode()
 
     # A regenerate leaves a published league published.

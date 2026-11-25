@@ -159,7 +159,7 @@ def test_row_link(client, league):
     event.status = Event.Status.PUBLISHED
     event.save()
     html = client.get("/events/").content.decode()
-    assert f'href="/events/{event.pk}/preview/"' in html
+    assert f'href="/events/{event.pk}/schedule/"' in html
 
 
 def test_history_restore_gets_full_page_and_vary(client, league):

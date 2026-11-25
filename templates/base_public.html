@@ -12,7 +12,7 @@ Blocks: public_header (defaults to the monogram), content.
   </a>
   {% endblock %}
 </header>
-<main class="mx-auto w-full max-w-md px-4 pb-16">
+<main class="{% block main_class %}mx-auto w-full max-w-md px-4 pb-16{% endblock %}">
   {% block content %}{% endblock %}
 </main>
 {% endblock %}

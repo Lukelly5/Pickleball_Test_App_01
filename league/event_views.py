@@ -1,0 +1,129 @@
+"""The event page (Slice 4): Schedule tab, stub tabs, shared with the share link."""
+
+from urllib.parse import urlencode
+
+from django.contrib.auth.decorators import login_required
+from django.http import Http404
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.cache import patch_vary_headers
+
+from accounts.roles import player_for
+from ui.nav import NavLink, optional_reverse
+
+from .display import short_day
+from .models import Event, Team
+from .schedule_page import build_page, read_state
+
+TABS = (
+    ("schedule", "Schedule"),
+    ("standings", "Standings"),
+    ("teams", "Teams"),
+)
+
+
+def event_tabs(event, active: str, *, token: str | None = None, admin: bool = False) -> list[NavLink]:
+    """The underline tabs; share URLs when a token is given, else the event_* names."""
+
+    def url(key: str) -> str:
+        return reverse(f"share_{key}", args=[token]) if token else reverse(f"event_{key}", args=[event.pk])
+
+    tabs = [NavLink(label, url(key), "", key == active) for key, label in TABS]
+    if admin and token is None:
+        settings_url = optional_reverse("event_settings", event.pk)
+        if settings_url:
+            tabs.append(NavLink("Settings", settings_url, "", active == "settings"))
+    return tabs
+
+
+def member_event(request, pk: int) -> Event:
+    """The event, only if it is in the user's organization (any status)."""
+    return get_object_or_404(Event, pk=pk, organization_id=request.user.organization_id)
+
+
+def draft_guard(request, event):
+    """None when the event is visible; else a redirect to the preview (admin) or a 404."""
+    if event.status != Event.Status.DRAFT:
+        return None
+    if request.user.is_admin:
+        return redirect("event_preview", event.pk)
+    raise Http404
+
+
+def _render(request, template: str, partial: str | None, context: dict):
+    # htmx's history-restore request also sends HX-Request; it needs the whole page.
+    is_partial = (
+        partial
+        and request.headers.get("HX-Request")
+        and not request.headers.get("HX-History-Restore-Request")
+    )
+    response = render(request, partial if is_partial else template, context)
+    patch_vary_headers(response, ["HX-Request", "HX-History-Restore-Request"])
+    return response
+
+
+def _my_team_ids(request, event, token) -> frozenset[int]:
+    player = None if token else player_for(request.user)
+    if player is None:
+        return frozenset()
+    return frozenset(
+        Team.objects.filter(flight__division__event=event, members__player=player).values_list(
+            "pk", flat=True
+        )
+    )
+
+
+def _frame(request, event, active: str, token: str | None) -> dict:
+    admin = bool(getattr(request.user, "is_admin", False)) and token is None
+    return {
+        "event": event,
+        "tabs": event_tabs(event, active, token=token, admin=admin),
+        "base_template": "base_public.html" if token else "base_app.html",
+        "share": token is not None,
+        "is_admin": admin,
+    }
+
+
+def render_schedule(request, event, *, token: str | None = None):
+    today = timezone.localdate()
+    state = read_state(event, request.GET, today)
+    page = build_page(event, state, today, _my_team_ids(request, event, token))
+    schedule_url = (
+        reverse("share_schedule", args=[token]) if token else reverse("event_schedule", args=[event.pk])
+    )
+    filters = {} if state.tonight else {
+        k: v for k, v in (("division", state.division), ("flight", state.flight)) if v
+    }
+    context = {
+        **_frame(request, event, "schedule", token),
+        "page": page,
+        "schedule_url": schedule_url,
+        "filter_query": urlencode(filters),
+        "week_day": short_day(page.week_date) if page.week_date else "",
+        "next_day": short_day(page.next_night.date) if page.next_night else "",
+    }
+    return _render(request, "league/event/page.html", "league/event/_schedule_body.html", context)
+
+
+def render_coming_soon(request, event, active: str, *, token: str | None = None):
+    context = {**_frame(request, event, active, token), "label": dict(TABS)[active]}
+    return _render(request, "league/event/coming_soon.html", None, context)
+
+
+@login_required
+def event_schedule(request, pk: int):
+    event = member_event(request, pk)
+    return draft_guard(request, event) or render_schedule(request, event)
+
+
+@login_required
+def event_standings(request, pk: int):
+    event = member_event(request, pk)
+    return draft_guard(request, event) or render_coming_soon(request, event, "standings")
+
+
+@login_required
+def event_teams(request, pk: int):
+    event = member_event(request, pk)
+    return draft_guard(request, event) or render_coming_soon(request, event, "teams")

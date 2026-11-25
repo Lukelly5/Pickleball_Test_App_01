@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import preview_views, setup_views, views
+from . import event_views, preview_views, setup_views, views
 
 urlpatterns = [
     path("events/", views.event_list, name="event_list"),
@@ -20,5 +20,8 @@ urlpatterns = [
     path("events/<int:pk>/preview/edit/", preview_views.event_preview_edit, name="event_preview_edit"),
     path("events/<int:pk>/preview/regenerate/", preview_views.event_preview_regenerate, name="event_preview_regenerate"),
     path("events/<int:pk>/preview/publish/", preview_views.event_preview_publish, name="event_preview_publish"),
+    path("events/<int:pk>/schedule/", event_views.event_schedule, name="event_schedule"),
+    path("events/<int:pk>/standings/", event_views.event_standings, name="event_standings"),
+    path("events/<int:pk>/teams/", event_views.event_teams, name="event_teams"),
     path("me/", views.my_games, name="my_games"),
 ]
