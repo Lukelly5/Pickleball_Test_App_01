@@ -15,3 +15,8 @@ def date_range(first: date | None, last: date | None) -> str:
         return _day(first)
     with_year = first.year != last.year
     return f"{_day(first, with_year)}–{_day(last, with_year)}"
+
+
+def short_day(d: date) -> str:
+    """'Tue Dec 2'."""
+    return f"{d:%a} {d:%b} {d.day}"

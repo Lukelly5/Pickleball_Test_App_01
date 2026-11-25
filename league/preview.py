@@ -9,13 +9,13 @@ from dataclasses import dataclass
 
 from django.http import QueryDict
 
-from league.models import Division, Event, Flight, Match, Team, Week
+from league.filters import filter_options, read_filters, to_int
+from league.models import Event, Match, Team, Week
 from league.schedule_edits import scored_match_ids
 from league.scheduling import load_schedule
 from scheduler import fairness_report, pair_meet_text
 
 PICK_RE = re.compile(r"^(g\d+|t\d+[ab])$")
-LEVEL_LABELS = dict(Division.Level.choices)
 
 
 @dataclass(frozen=True)
@@ -81,31 +81,14 @@ class FlightFairness:
 # --- state ---------------------------------------------------------------
 
 
-def _int(value) -> int | None:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def parse_state(event: Event, params: QueryDict) -> dict:
     """The page state from the query string; junk values fall back to defaults."""
     week_numbers = list(event.weeks.values_list("number", flat=True))
-    week = _int(params.get("week"))
+    week = to_int(params.get("week"))
     if week not in week_numbers:
         week = 1
 
-    levels = set(Division.objects.filter(event=event).values_list("level", flat=True))
-    division = params.get("division", "")
-    if division not in levels:
-        division = ""
-
-    flights = Flight.objects.filter(division__event=event)
-    if division:
-        flights = flights.filter(division__level=division)
-    flight = _int(params.get("flight"))
-    if flight not in set(flights.values_list("pk", flat=True)):
-        flight = None
+    division, flight = read_filters(event, params)
 
     pick = params.get("pick", "")
     if PICK_RE.match(pick):
@@ -183,14 +166,7 @@ def build_board(event: Event, state: dict) -> Board:
     ]
     read_only = any(t.cancelled for t in tabs if t.number == week_no)
 
-    divisions = [
-        (d.level, LEVEL_LABELS[d.level]) for d in Division.objects.filter(event=event).order_by("pk")
-    ]
-    flight_rows = Flight.objects.filter(division__event=event).select_related("division")
-    if division:
-        flight_rows = flight_rows.filter(division__level=division)
-    flight_rows = flight_rows.order_by("division__pk", "pk")
-    flights = [(f.pk, f.name) for f in flight_rows]
+    divisions, flights = filter_options(event, division)
     shown = {flight_id} if flight_id else {pk for pk, _ in flights}
     filtered = bool(division or flight_id)
 
