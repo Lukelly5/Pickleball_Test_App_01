@@ -46,6 +46,18 @@ Publishing opens the event page at `/events/<id>/schedule/`, with Schedule, Stan
 - Settings has the share link. Anyone with it can see the schedule, standings and teams at `/s/<token>/` with no login. Copy it, or Reset it to retire the old link. Share pages have no app navigation and are marked noindex.
 - My Games links each team to its flight's schedule.
 
+## Enter scores
+
+Each card on the Schedule and Tonight views has an "Enter score" button (or "Edit score" once scored). It opens a score sheet that fills the screen on a phone. Games are validated against the league's format (best of 1 or 3, points to win, win by 2), and the sheet shows the result live; Game 3 appears only when the first two games are split.
+
+- Who can score: an admin can score any match. A player can score a match their team plays in only when player score entry is on in the league setup. A player's score that breaks the format is blocked; an admin sees a warning and can "Save anyway".
+- Once an admin has scored or edited a match, a player's later save is refused with "An admin has already scored this match."
+- Forfeit: an admin picks the team that forfeited, and the other team wins. Players cannot forfeit.
+- Clear: an admin can clear a score or forfeit after confirming, which returns the match to unscored.
+- Cards show the game chips and "Last edited by" the last person to change the score.
+- Locking: once any match has a score or forfeit, the league's setup is locked and Regenerate on the Preview is refused, so scores are never orphaned.
+- Without JavaScript the same pages work as plain forms and redirect back to the schedule week.
+
 ## Demo data
 
 `seed_demo` creates the organization "Waco Regional (Demo)" with a 6-flight league and an 8-team tournament, and two logins at `/login/`, both with the password `pickleball`:

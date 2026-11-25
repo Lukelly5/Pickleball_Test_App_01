@@ -560,7 +560,7 @@ Suggested stack: Django + Django templates + HTMX for in-place updates (swap, sc
 - [x] P3 wizard steps 1–5 for leagues, saving a draft after each step; games-per-team grid with live summary
 - [x] P4 Schedule Preview: week tabs, round × court grid, swap with conflict check, fairness panel (including longest sit), Regenerate, Publish
 - [x] P5 Schedule tab + Tonight view (phone-first), Division/Flight dropdowns, token share link at `/s/<token>/…`
-- [ ] P8 Score entry modal (phone-first) with format validation, admin "Save anyway", and forfeit
+- [x] P8 Score entry modal (phone-first) with format validation, admin "Save anyway", and forfeit
 - [ ] P6 Standings (computed from scores, sorted by win percentage)
 - [ ] P7 Teams tab with withdraw
 - [ ] P9 Players directory, P10 Admins, P11 My Games
