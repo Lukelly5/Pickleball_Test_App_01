@@ -127,3 +127,32 @@ def event_standings(request, pk: int):
 def event_teams(request, pk: int):
     event = member_event(request, pk)
     return draft_guard(request, event) or render_coming_soon(request, event, "teams")
+
+
+def shared_event(token: str) -> Event:
+    """The event for a share token, only while published or completed."""
+    return get_object_or_404(
+        Event,
+        share_token=token,
+        status__in=[Event.Status.PUBLISHED, Event.Status.COMPLETED],
+    )
+
+
+def _noindex(response):
+    response["X-Robots-Tag"] = "noindex"
+    return response
+
+
+def share_schedule(request, token: str):
+    event = shared_event(token)
+    return _noindex(render_schedule(request, event, token=token))
+
+
+def share_standings(request, token: str):
+    event = shared_event(token)
+    return _noindex(render_coming_soon(request, event, "standings", token=token))
+
+
+def share_teams(request, token: str):
+    event = shared_event(token)
+    return _noindex(render_coming_soon(request, event, "teams", token=token))
