@@ -119,10 +119,11 @@ def match_score(request, pk: int, match_pk: int):
     if guard:
         return guard
     today = timezone.localdate()
-    if not can_score(request.user, match, today):
-        raise PermissionDenied
     if request.method == "GET":
+        if not can_score(request.user, match, today):
+            raise PermissionDenied
         return render_score(request, event, match, None)
+    # POST: save_score re-checks under the lock, so a late player save gets the admin-lock refusal.
 
     fmt = Format.of(event)
     raw = raw_games(request.POST, fmt.best_of)

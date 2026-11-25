@@ -214,3 +214,13 @@ def test_anonymous_redirects_to_login(client, league, m2):
     client.logout()
     r = client.get(score_url(m2))
     assert r.status_code == 302 and "login" in r["Location"]
+
+
+def test_player_late_save_after_admin_lock_shows_refusal(client, league, m2):
+    player = user_on(m2.team_a)
+    client.post(score_url(m2), WIN)
+    client.force_login(player)
+    r = client.post(score_url(m2), {"g1a": "11", "g1b": "3", "g2a": "11", "g2b": "3"})
+    assert r.status_code == 200
+    assert "An admin has already scored this match." in r.content.decode().replace("&#x27;", "'")
+    assert sorted(m2.games.values_list("points_a", "points_b")) == [(11, 5), (11, 7)]
