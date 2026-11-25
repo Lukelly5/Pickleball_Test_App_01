@@ -48,12 +48,12 @@ Publishing opens the event page at `/events/<id>/schedule/`, with Schedule, Stan
 
 ## Enter scores
 
-Each card on the Schedule and Tonight views has an "Enter score" button (or "Edit score" once scored). It opens a score sheet that fills the screen on a phone. Games are validated against the league's format (best of 1 or 3, points to win, win by 2), and the sheet shows the result live; Game 3 appears only when the first two games are split.
+Each card on the Schedule and Tonight views has an "Enter score" button (or "Edit score" once scored). It opens a score sheet that fills the screen on a phone. Games are validated against the league's format (best of 1, 3 or 5, points to win, win by 2), and the sheet shows the result live; later games (Game 3, or Games 4-5 in best of 5) appear only when needed.
 
-- Who can score: an admin can score any match. A player can score a match their team plays in only when player score entry is on in the league setup. A player's score that breaks the format is blocked; an admin sees a warning and can "Save anyway".
+- Who can score: an admin can score any match. A player can score a match only when the event is published, player score entry is on in the league setup, they are on one of the two teams, and the game night is today or earlier (or the week has no date). A player's score that breaks the format is blocked; an admin sees a warning and can "Save anyway".
 - Once an admin has scored or edited a match, a player's later save is refused with "An admin has already scored this match."
 - Forfeit: an admin picks the team that forfeited, and the other team wins. Players cannot forfeit.
-- Clear: an admin can clear a score or forfeit after confirming, which returns the match to unscored.
+- Clear: an admin can clear a score or forfeit after confirming, which returns the match to unscored. A cleared match stays locked to players; only an admin can enter it again.
 - Cards show the game chips and "Last edited by" the last person to change the score.
 - Locking: once any match has a score or forfeit, the league's setup is locked and Regenerate on the Preview is refused, so scores are never orphaned.
 - Without JavaScript the same pages work as plain forms and redirect back to the schedule week.

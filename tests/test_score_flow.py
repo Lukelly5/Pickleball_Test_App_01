@@ -93,3 +93,12 @@ def test_score_walkthrough(client):
     html = client.get(week2).content.decode()
     card = html.split(f'data-card="{third_pk}"')[1].split("</article>")[0]
     assert "Enter score" in card
+
+    # A cleared match stays locked to players: only an admin can re-enter it.
+    assert client.post(f"{player_url}clear/", {"confirm": "1"}).status_code == 302
+    assert Match.objects.get(pk=player_pk).status == "scheduled"
+    client.logout()
+    assert client.login(username="player@example.com", password="pickleball")
+    r = client.post(player_url, {"g1a": "11", "g1b": "3", "g2a": "11", "g2b": "3"})
+    assert "An admin has already scored this match." in r.content.decode().replace("&#x27;", "'")
+    assert Match.objects.get(pk=player_pk).status == "scheduled"
