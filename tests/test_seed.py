@@ -105,3 +105,41 @@ def test_seed_league_has_share_token():
     call_command("seed_demo")
     assert Event.objects.get(name="Spring Tuesday League").share_token
     assert Event.objects.get(name="March Madness Shootout").share_token is None
+
+
+def _league_dates():
+    league = Event.objects.get(name="Spring Tuesday League")
+    return league, [w.date for w in league.weeks.order_by("number")]
+
+
+def test_seed_tonight_dates_week_2_today():
+    from datetime import timedelta
+    from django.utils import timezone
+
+    call_command("seed_demo", "--tonight")
+    today = timezone.localdate()
+    league, dates = _league_dates()
+    assert dates == [today - timedelta(days=7), today, today + timedelta(days=7), today + timedelta(days=14)]
+    assert league.start_date == today - timedelta(days=7)
+
+
+def test_seed_tonight_on_existing_demo(capsys):
+    from django.utils import timezone
+
+    call_command("seed_demo")
+    matches = Match.objects.count()
+    capsys.readouterr()
+    call_command("seed_demo", "--tonight")
+    out = capsys.readouterr().out
+    league, dates = _league_dates()
+    assert dates[1] == timezone.localdate()
+    assert "Demo league re-dated: Week 2 is tonight." in out and "already exists" not in out
+    assert Organization.objects.count() == 1
+    assert league.status == Event.Status.PUBLISHED and Match.objects.count() == matches
+
+
+def test_seed_without_tonight_unchanged():
+    from datetime import date
+
+    call_command("seed_demo")
+    assert _league_dates()[1][0] == date(2027, 3, 2)

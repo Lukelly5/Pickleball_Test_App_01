@@ -37,6 +37,15 @@ After Generate, the schedule opens at `/events/<id>/preview/` (My Events links t
 - Publish asks first and is blocked while the setup inputs have changed since the schedule was made ("Regenerate first").
 - A published league can still be edited in setup. The wizard shows warnings: renames show up right away, removing a team or flight removes its games immediately, and other changes apply when you regenerate.
 
+## Event page and share link
+
+Publishing opens the event page at `/events/<id>/schedule/`, with Schedule, Standings, Teams and Settings tabs (Standings and Teams are "Coming soon" for now).
+
+- Schedule shows one week at a time as game cards, with week pills and Division and Flight filters. A card marks your own team with "You" and lists who is sitting out.
+- Tonight (`/tonight/`, or the Tonight button) shows tonight's games for every flight in a phone-first layout. When there are none, it names the next game night.
+- Settings has the share link. Anyone with it can see the schedule, standings and teams at `/s/<token>/` with no login. Copy it, or Reset it to retire the old link. Share pages have no app navigation and are marked noindex.
+- My Games links each team to its flight's schedule.
+
 ## Demo data
 
 `seed_demo` creates the organization "Waco Regional (Demo)" with a 6-flight league and an 8-team tournament, and two logins at `/login/`, both with the password `pickleball`:
@@ -44,8 +53,9 @@ After Generate, the schedule opens at `/events/<id>/preview/` (My Events links t
 - `admin@example.com` - the organization admin.
 - `player@example.com` - a player on two flights (Men's and Mixed) of the league.
 
-The league is published and the tournament is a draft.
+The league is published, with a share link on its Settings tab, and the tournament is a draft.
 
+- `seed_demo --tonight` re-dates the league so Week 2 is today (Week 1 a week earlier, Weeks 3 and 4 a week and two weeks later), which makes the Tonight view show games. It works on a fresh seed, with `--reset`, or on an existing demo, and leaves the tournament alone.
 - `seed_demo --reset` deletes the demo organization and both logins, then rebuilds them. Other organizations are never touched.
 - `seed_demo` refuses to run when DEBUG is off; add `--force` to run it anyway.
 

@@ -555,11 +555,11 @@ Suggested stack: Django + Django templates + HTMX for in-place updates (swap, sc
 
 - [x] Models and migrations for the ERD (Section 7); Django admin registered for quick data entry
 - [x] Scheduler module (pure Python, no Django imports) + unit tests T1–T9
-- [ ] Auth: login, invite token with "Copy invite link", set password, password reset, Admin vs Player permissions
-- [ ] P2 My Events with empty state
-- [ ] P3 wizard steps 1–5 for leagues, saving a draft after each step; games-per-team grid with live summary
-- [ ] P4 Schedule Preview: week tabs, round × court grid, swap with conflict check, fairness panel (including longest sit), Regenerate, Publish
-- [ ] P5 Schedule tab + Tonight view (phone-first), Division/Flight dropdowns, token share link at `/s/<token>/…`
+- [x] Auth: login, invite token with "Copy invite link", set password, password reset, Admin vs Player permissions
+- [x] P2 My Events with empty state
+- [x] P3 wizard steps 1–5 for leagues, saving a draft after each step; games-per-team grid with live summary
+- [x] P4 Schedule Preview: week tabs, round × court grid, swap with conflict check, fairness panel (including longest sit), Regenerate, Publish
+- [x] P5 Schedule tab + Tonight view (phone-first), Division/Flight dropdowns, token share link at `/s/<token>/…`
 - [ ] P8 Score entry modal (phone-first) with format validation, admin "Save anyway", and forfeit
 - [ ] P6 Standings (computed from scores, sorted by win percentage)
 - [ ] P7 Teams tab with withdraw

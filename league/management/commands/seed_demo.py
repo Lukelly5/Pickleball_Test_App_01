@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from accounts.models import Organization, User
 from league.models import Division, Event, Flight, Player, Team, TeamMember
@@ -12,6 +13,7 @@ ORG_NAME = "Waco Regional (Demo)"
 ADMIN_EMAIL = "admin@example.com"
 ADMIN_PASSWORD = "pickleball"
 PLAYER_EMAIL = "player@example.com"
+LEAGUE_NAME = "Spring Tuesday League"
 
 FIRST_NAMES = [
     "Alex", "Blake", "Casey", "Drew", "Emery", "Finn", "Gray", "Harper", "Indy", "Jordan",
@@ -44,6 +46,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--force", action="store_true", help="Run even when DEBUG is off."
         )
+        parser.add_argument(
+            "--tonight",
+            action="store_true",
+            help="Re-date the league so Week 2 is today.",
+        )
 
     def handle(self, *args, **options):
         if not settings.DEBUG and not options["force"]:
@@ -53,11 +60,26 @@ class Command(BaseCommand):
             existing = Organization.objects.filter(name=ORG_NAME)
             if existing.exists():
                 if not options["reset"]:
-                    self.stdout.write("Demo data already exists. Use --reset to rebuild it.")
+                    if options["tonight"]:
+                        self._redate_league(Event.objects.get(organization__name=ORG_NAME, name=LEAGUE_NAME))
+                        self.stdout.write("Demo league re-dated: Week 2 is tonight.")
+                    else:
+                        self.stdout.write("Demo data already exists. Use --reset to rebuild it.")
                     return
                 existing.delete()
                 User.objects.filter(email__in=[ADMIN_EMAIL, PLAYER_EMAIL]).delete()
             self._seed()
+            if options["tonight"]:
+                self._redate_league(Event.objects.get(organization__name=ORG_NAME, name=LEAGUE_NAME))
+
+    def _redate_league(self, league):
+        """Date the weeks so Week 2 is today; the league starts a week earlier."""
+        today = timezone.localdate()
+        for week in league.weeks.all():
+            week.date = today + timedelta(days=7 * (week.number - 2))
+            week.save(update_fields=["date"])
+        league.start_date = today - timedelta(days=7)
+        league.save(update_fields=["start_date"])
 
     def _seed(self):
         org = Organization.objects.create(name=ORG_NAME)
@@ -75,7 +97,7 @@ class Command(BaseCommand):
 
         league = Event.objects.create(
             organization=org,
-            name="Spring Tuesday League",
+            name=LEAGUE_NAME,
             type=Event.Type.LEAGUE,
             start_date=date(2027, 3, 2),
             courts=6,

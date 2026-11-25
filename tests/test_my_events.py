@@ -101,3 +101,18 @@ def test_my_games_lists_published_teams_only(client, league):
 
 def test_my_games_requires_login(client):
     assert client.get("/me/").url.startswith("/login/?next=/me/")
+
+
+def test_my_games_links_to_flight_schedule(client, league):
+    flight = league.divisions.get().flights.get(format="mens")
+    team = add_team(flight, "Dinkers")
+    player = team.players.first()
+    player.email = "p@example.com"
+    player.save()
+    league.status = Event.Status.PUBLISHED
+    league.save()
+    client.force_login(
+        User.objects.create_user("p@example.com", "pw", organization=league.organization)
+    )
+    html = client.get("/me/").content.decode()
+    assert f'href="/events/{league.pk}/schedule/?flight={team.flight_id}"' in html

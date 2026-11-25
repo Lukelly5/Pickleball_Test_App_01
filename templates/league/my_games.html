@@ -6,7 +6,7 @@
 <div class="grid gap-3 md:grid-cols-2">
   {% for team in teams %}
   <div class="card px-4 py-4">
-    <h2 class="font-display text-lg font-bold text-ink">{{ team.name }}</h2>
+    <h2 class="font-display text-lg font-bold text-ink"><a href="{% url 'event_schedule' team.flight.division.event.pk %}?flight={{ team.flight_id }}" class="hover:underline">{{ team.name }}</a></h2>
     <p class="mt-1 text-sm text-muted-foreground">{{ team.flight.division.event.name }} · {{ team.flight.name }}</p>
   </div>
   {% endfor %}
