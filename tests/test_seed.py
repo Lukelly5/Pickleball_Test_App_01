@@ -99,3 +99,9 @@ def test_seed_reset_removes_player_login_first():
     call_command("seed_demo")
     call_command("seed_demo", "--reset")
     assert User.objects.filter(email="player@example.com").count() == 1
+
+
+def test_seed_league_has_share_token():
+    call_command("seed_demo")
+    assert Event.objects.get(name="Spring Tuesday League").share_token
+    assert Event.objects.get(name="March Madness Shootout").share_token is None

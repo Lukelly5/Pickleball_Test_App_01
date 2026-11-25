@@ -123,6 +123,17 @@ class Event(models.Model):
     def __str__(self):
         return self.name
 
+    def ensure_share_token(self) -> str:
+        if not self.share_token:
+            self.share_token = new_token()
+            self.save(update_fields=["share_token"])
+        return self.share_token
+
+    def reset_share_token(self) -> str:
+        self.share_token = new_token()
+        self.save(update_fields=["share_token"])
+        return self.share_token
+
     def clean(self):
         if self.type == self.Type.TOURNAMENT:
             if not self.window_minutes:

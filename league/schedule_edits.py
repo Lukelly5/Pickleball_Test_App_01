@@ -8,7 +8,7 @@ rows to engine slots and writes only the rows that changed.
 import scheduler
 from django.db import transaction
 
-from league.models import Event, Match
+from league.models import Event, Match, new_token
 from league.scheduling import generate_event, load_schedule
 from league.setup_preview import plan_views
 
@@ -136,8 +136,10 @@ def publish(event: Event) -> None:
             raise EditRefused("Regenerate first: inputs changed since this schedule was made.")
         if not Match.objects.filter(flight__division__event=locked).exists():
             raise EditRefused("Generate a schedule before publishing.")
-        Event.objects.filter(pk=locked.pk).update(status=Event.Status.PUBLISHED)
+        token = locked.share_token or new_token()
+        Event.objects.filter(pk=locked.pk).update(status=Event.Status.PUBLISHED, share_token=token)
     event.status = Event.Status.PUBLISHED
+    event.share_token = token
 
 
 def regenerate(event: Event) -> scheduler.Schedule:

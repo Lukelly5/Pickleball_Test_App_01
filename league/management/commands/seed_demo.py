@@ -109,6 +109,7 @@ class Command(BaseCommand):
         # The league is published so the player login has games to see; the tournament stays a draft.
         league.status = Event.Status.PUBLISHED
         league.save(update_fields=["status"])
+        league.ensure_share_token()
         self.stdout.write(
             f"Seeded 2 events, 7 flights, {games} games. Log in at /login/ as "
             f"{ADMIN_EMAIL} (admin) or {PLAYER_EMAIL} (player), password {ADMIN_PASSWORD}"
