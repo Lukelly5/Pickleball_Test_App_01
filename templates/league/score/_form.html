@@ -14,7 +14,7 @@
     </form>
   </div>
   {% endif %}
-  <form method="post" action="{% url 'match_score' event.pk match.pk %}" id="score-form" class="grid gap-4"{% if live %} hx-post="{% url 'match_score' event.pk match.pk %}" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML" hx-sync="this:queue last"{% endif %}>{% csrf_token %}
+  <form method="post" action="{% url 'match_score' event.pk match.pk %}" id="score-form" class="grid gap-4"{% if live %} hx-post="{% url 'match_score' event.pk match.pk %}" hx-target="#score-body" hx-select="#score-body" hx-swap="outerHTML" hx-sync="this:queue last" hx-on::before-swap="if (event.target.id === 'score-body') { const a = document.activeElement; this._focus = a.id ? [a.id, a.selectionStart, a.selectionEnd] : null }" hx-on::after-swap="const f = this._focus; this._focus = null; const el = f && event.target.id === 'score-body' && document.getElementById(f[0]); if (el && el !== document.activeElement) { el.focus(); el.setSelectionRange(f[1], f[2]) }"{% endif %}>{% csrf_token %}
     <div id="score-body" class="grid gap-4">
     <div class="grid grid-cols-[auto_1fr_1fr] items-center gap-x-3 gap-y-2">
       <span></span>

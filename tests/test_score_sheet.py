@@ -121,3 +121,13 @@ def test_winner_highlight_is_on_wrapper_not_input(client, league, m2):
     r = client.post(score_url(m2, "check/"), {"g1a": "11", "g1b": "7"}, **HX).content.decode()
     inp = r.split('id="score-g1a"')[1].split(">")[0]
     assert "bg-progress" not in inp
+
+
+def test_live_form_restores_focus_across_swaps(client, league, m2):
+    html = client.get(score_url(m2), **HX).content.decode()
+    form = html.split('id="score-form"')[1].split(">\n")[0]
+    assert "hx-on::before-swap=" in form and "hx-on::after-swap=" in form
+    assert "activeElement" in form and "setSelectionRange" in form
+    assert html.count("hx-on::before-swap") == 1
+    no_js = client.get(score_url(m2)).content.decode()
+    assert "hx-on::before-swap" not in no_js
