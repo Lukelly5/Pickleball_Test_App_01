@@ -18,7 +18,7 @@ from ui.nav import NavLink, optional_reverse
 
 from .display import short_day
 from .models import Event, Team
-from .schedule_page import build_page, read_state
+from .schedule_page import build_page, next_game_night, read_state, tonight_week
 
 TABS = (
     ("schedule", "Schedule"),
@@ -196,3 +196,28 @@ def share_standings(request, token: str):
 def share_teams(request, token: str):
     event = shared_event(token)
     return _noindex(render_coming_soon(request, event, "teams", token=token))
+
+
+@admin_required
+def tonight(request):
+    today = timezone.localdate()
+    events = (
+        Event.objects.filter(organization_id=request.user.organization_id, status=Event.Status.PUBLISHED)
+        .prefetch_related("weeks")
+        .order_by("name")
+    )
+    playing, upcoming = [], []
+    for event in events:
+        weeks = list(event.weeks.all())
+        if week := tonight_week(weeks, today):
+            playing.append((event, week))
+        elif nxt := next_game_night(weeks, today):
+            upcoming.append((nxt.date, event.name, event, nxt))
+    if len(playing) == 1:
+        event = playing[0][0]
+        return redirect(reverse("event_schedule", args=[event.pk]) + "?view=tonight")
+    next_night = None
+    if not playing and upcoming:
+        _, _, event, week = min(upcoming, key=lambda u: (u[0], u[1]))
+        next_night = {"event": event, "week": week, "day": short_day(week.date)}
+    return render(request, "league/tonight.html", {"playing": playing, "next_night": next_night})

@@ -28,5 +28,6 @@ urlpatterns = [
     path("s/<str:token>/schedule/", event_views.share_schedule, name="share_schedule"),
     path("s/<str:token>/standings/", event_views.share_standings, name="share_standings"),
     path("s/<str:token>/teams/", event_views.share_teams, name="share_teams"),
+    path("tonight/", event_views.tonight, name="tonight"),
     path("me/", views.my_games, name="my_games"),
 ]

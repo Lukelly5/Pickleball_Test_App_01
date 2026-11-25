@@ -1,0 +1,19 @@
+{% extends "base_app.html" %}
+{% block title %}Tonight{% endblock %}
+{% block page_title %}Tonight{% endblock %}
+{% block content %}
+{% if playing %}
+<ul class="card divide-y divide-border p-0">
+  {% for event, week in playing %}
+  <li><a href="{% url 'event_schedule' event.pk %}?view=tonight" class="block px-4 py-3 font-semibold text-ink hover:text-brand">{{ event.name }} · Week {{ week.number }}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+{% include "components/empty_state.html" with icon="moon" message="No games tonight." only %}
+{% if next_night %}
+<p class="mt-4 text-sm text-muted-foreground">
+  <a href="{% url 'event_schedule' next_night.event.pk %}?week={{ next_night.week.number }}" class="font-semibold text-ink hover:text-brand">Next game night: {{ next_night.event.name }} · {{ next_night.day }} · Week {{ next_night.week.number }}</a>
+</p>
+{% endif %}
+{% endif %}
+{% endblock %}
