@@ -6,18 +6,33 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseNotAllowed
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .event_views import _render, draft_guard, member_event
+from .event_views import _my_team_ids, _render, draft_guard, member_event
 from .filters import to_int
 from .models import Match
-from .score_edits import ScoreRefused, can_manage, can_score, clear_score, save_forfeit, save_score
+from .score_edits import (
+    ScoreRefused,
+    can_manage,
+    can_score,
+    clear_score,
+    save_forfeit,
+    save_score,
+    scorable_ids,
+)
+from .schedule_page import card_for
 from .scoring import Format, Message, ScoreCheck, check_score, raw_games
 
 FORFEIT_REFUSAL = "Choose the team that forfeited."
+
+
+def _live(request) -> bool:
+    """True when the sheet is shown in the dialog (the same rule as event_views._render)."""
+    return bool(request.headers.get("HX-Request")) and not request.headers.get("HX-History-Restore-Request")
 
 
 def _names(match: Match) -> tuple[str, str]:
@@ -63,6 +78,9 @@ def render_score(
         }
         for n in range(1, fmt.best_of + 1)
     ]
+    live = _live(request)
+    if live:
+        rows = rows[: check.shown]
     partial = "league/score/_forfeit.html" if step == "forfeit" else "league/score/_form.html"
     context = {
         "event": event,
@@ -77,6 +95,7 @@ def render_score(
         "scored": match.status == Match.Status.FINAL,
         "confirm": confirm,
         "step": step,
+        "live": live,
         "partial": partial,
         "week_url": reverse("event_schedule", args=[event.pk]) + f"?week={match.week.number}",
     }
@@ -93,6 +112,24 @@ def _match(event, match_pk: int) -> Match:
         pk=match_pk,
         flight__division__event=event,
     )
+
+
+def _done(request, event, match: Match, text: str):
+    """Success: the sheet closes and the card is swapped in place (HTMX), else back to the week."""
+    messages.success(request, text)
+    if not _live(request):
+        return _back(event, match)
+    match = _match(event, match.pk)
+    context = {
+        "event": event,
+        "card": card_for(match, _my_team_ids(request, event, None)),
+        "scorable": scorable_ids(request.user, event, [match.pk], timezone.localdate()),
+        "oob": True,
+    }
+    response = render(request, "league/score/_saved.html", context)
+    response["HX-Trigger"] = "score-saved"
+    patch_vary_headers(response, ["HX-Request", "HX-History-Restore-Request"])
+    return response
 
 
 def _back(event, match: Match):
@@ -135,8 +172,7 @@ def match_score(request, pk: int, match_pk: int):
         return render_score(request, event, match, _refused(_read_check(request, event, match), str(refusal)))
     if saved is None:
         return render_score(request, event, match, check)
-    messages.success(request, "Score saved")
-    return _back(event, saved)
+    return _done(request, event, saved, "Score saved")
 
 
 @login_required
@@ -168,8 +204,7 @@ def match_forfeit(request, pk: int, match_pk: int):
     except ScoreRefused as refusal:
         check = _refused(_saved_check(event, match, True), str(refusal))
         return render_score(request, event, match, check, step="forfeit")
-    messages.success(request, "Forfeit saved")
-    return _back(event, saved)
+    return _done(request, event, saved, "Forfeit saved")
 
 
 @login_required
@@ -187,5 +222,4 @@ def match_score_clear(request, pk: int, match_pk: int):
         saved = clear_score(event, match.pk, request.user)
     except ScoreRefused as refusal:
         return render_score(request, event, match, _refused(_read_check(request, event, match), str(refusal)))
-    messages.success(request, "Score cleared")
-    return _back(event, saved)
+    return _done(request, event, saved, "Score cleared")

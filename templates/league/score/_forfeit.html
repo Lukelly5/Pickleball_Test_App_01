@@ -1,6 +1,6 @@
 <div class="card grid gap-4 p-4 md:p-5">
   <p class="text-sm font-semibold text-muted-foreground">Wk {{ match.week.number }} · R{{ match.round_no }} · Court {{ match.court_no }}</p>
-  <form method="post" action="{% url 'match_forfeit' event.pk match.pk %}" class="grid gap-4">{% csrf_token %}
+  <form method="post" action="{% url 'match_forfeit' event.pk match.pk %}" class="grid gap-4"{% if live %} hx-post="{% url 'match_forfeit' event.pk match.pk %}" hx-target="#score-sheet" hx-select="unset" hx-swap="innerHTML"{% endif %}>{% csrf_token %}
     <fieldset class="grid gap-2">
       <legend class="mb-1 text-base font-extrabold text-ink">Which team forfeited?</legend>
       {% for team in match_teams %}
@@ -12,7 +12,7 @@
     {% endfor %}
     <div class="flex flex-wrap gap-3">
       <button type="submit" class="btn text-ink">Save forfeit</button>
-      <a href="{% url 'match_score' event.pk match.pk %}" class="btn" data-variant="outline">Back</a>
+      <a href="{% url 'match_score' event.pk match.pk %}" class="btn" data-variant="outline"{% if live %} hx-get="{% url 'match_score' event.pk match.pk %}" hx-target="#score-sheet" hx-select="unset" hx-swap="innerHTML"{% endif %}>Back</a>
     </div>
   </form>
 </div>

@@ -5,4 +5,7 @@
 {% block content %}
 {% include "league/event/_header.html" %}
 <div id="event-body">{% include "league/event/_schedule_body.html" %}</div>
+{% if not share %}
+<dialog id="score-sheet" hx-on:score-saved="this.close()" class="m-auto w-[560px] max-w-full overflow-y-auto rounded-[14px] border-0 bg-card p-0 text-foreground backdrop:bg-ink/50 max-md:m-0 max-md:h-full max-md:max-h-none max-md:w-full max-md:max-w-none max-md:rounded-none"></dialog>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,10 @@
+{% include "league/event/_card.html" %}
+<div id="toaster" hx-swap-oob="beforeend">
+  {% for message in messages %}
+  <div class="toast" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}" aria-atomic="true" data-category="{{ message.level_tag }}">
+    <div class="toast-content">
+      <section><p>{{ message }}</p></section>
+    </div>
+  </div>
+  {% endfor %}
+</div>
