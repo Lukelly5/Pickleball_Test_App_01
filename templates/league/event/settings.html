@@ -19,7 +19,7 @@
     <p class="text-sm text-muted-foreground">Anyone with this link can see the schedule, standings and teams. No login needed.</p>
     <div class="flex flex-wrap gap-3">
       <input id="share-url" type="text" readonly value="{{ share_url }}" onfocus="this.select()" aria-label="Share link" class="min-w-0 flex-1 rounded-[10px] border border-border bg-card px-3 py-2 text-sm text-ink">
-      <button type="button" class="btn" data-variant="outline" onclick="navigator.clipboard.writeText(document.getElementById('share-url').value); this.textContent = 'Copied'">Copy</button>
+      <button type="button" class="btn" data-variant="outline" onclick="var el = document.getElementById('share-url'); if (navigator.clipboard) { navigator.clipboard.writeText(el.value).then(() => this.textContent = 'Copied') } else { el.select(); document.execCommand('copy'); this.textContent = 'Copied' }">Copy</button>
     </div>
     <form method="post" action="{% url 'event_share_reset' event.pk %}">{% csrf_token %}
       <button type="submit" class="btn" data-variant="outline">Reset link</button>

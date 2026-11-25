@@ -11,6 +11,6 @@
     </span>
   </div>
   {% endfor %}
-  {% if card.forfeit %}<p class="text-xs font-semibold text-muted-foreground">Forfeit</p>{% endif %}
+  {% if card.forfeit %}<p class="text-xs font-semibold text-muted-foreground">Forfeit{% if card.winner_name %} · {{ card.winner_name }} wins{% endif %}</p>{% endif %}
   {% if card.status == "cancelled" %}<p class="text-xs font-semibold text-muted-foreground">Cancelled</p>{% elif card.status == "void" %}<p class="text-xs font-semibold text-muted-foreground">Void</p>{% endif %}
 </article>

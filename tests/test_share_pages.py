@@ -112,3 +112,11 @@ def test_share_hides_you_chip_for_member(client, event):
 def test_completed_share_visible(client, event):
     Event.objects.filter(pk=event.pk).update(status=Event.Status.COMPLETED)
     assert get(client, event.share_token).status_code == 200
+
+
+def test_share_stub_tonight_link_is_plain(client, event):
+    t = event.share_token
+    html = get(client, t, "standings").content.decode()
+    link = f'/s/{t}/schedule/?view=tonight'
+    button = html.split(f'href="{link}"')[1].split(">")[0]
+    assert "hx-target" not in button

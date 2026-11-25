@@ -70,7 +70,9 @@ def test_player_sees_no_settings(client, league):
     html = r.content.decode()
     assert "/settings/" not in html
     assert ">Settings<" not in html
-    assert "data-you" in html
+    cards = html.split("<article")[1:]
+    assert all(("data-you" in c) == ("Dinkers" in c) for c in cards)
+    assert any("Dinkers" in c for c in cards)
 
 
 def test_you_chip_for_player_on_two_flights(client, league):
@@ -157,3 +159,66 @@ def test_publish_lands_on_schedule(client, league):
     Event.objects.filter(pk=league.pk).update(status=Event.Status.DRAFT)
     r = client.post(f"/events/{league.pk}/preview/publish/", {"confirm": "1"})
     assert r["Location"] == f"/events/{league.pk}/schedule/"
+
+
+def no_game_today(league):
+    for week in league.weeks.all():
+        Week.objects.filter(pk=week.pk).update(date=week.date + timedelta(days=1))
+
+
+def test_round_headings(client, league):
+    html = client.get(url(league)).content.decode()
+    assert '<h3 class="mb-2 text-sm font-extrabold text-ink">Round 1</h3>' in html
+
+
+def test_pills_carry_filters(client, league):
+    flight = league.divisions.first().flights.first()
+    html = client.get(url(league, query=f"?week=2&division=intermediate&flight={flight.pk}")).content.decode()
+    href = f"{url(league)}?week=3&amp;division=intermediate&amp;flight={flight.pk}"
+    assert f'href="{href}"' in html
+    assert f'hx-get="{href}"' in html
+
+
+def test_pills_drop_filters_in_tonight_mode(client, league):
+    html = client.get(url(league, query="?view=tonight")).content.decode()
+    assert f'href="{url(league)}?week=3"' in html
+
+
+def test_hidden_week_input(client, league):
+    html = client.get(url(league, query="?week=3")).content.decode()
+    assert '<input type="hidden" name="week" value="3">' in html
+    no_game_today(league)
+    html = client.get(url(league, query="?view=tonight")).content.decode()
+    assert 'name="week"' not in html
+
+
+def test_next_game_night_link(client, league):
+    no_game_today(league)
+    html = client.get(url(league, query="?view=tonight")).content.decode()
+    link = f"{url(league)}?week=2"
+    assert f'href="{link}"' in html and f'hx-get="{link}"' in html
+    assert "Next game night:" in html
+
+
+def test_schedule_tab_tonight_button_swaps(client, league):
+    html = client.get(url(league)).content.decode()
+    link = f"{url(league)}?view=tonight"
+    button = html.split(f'href="{link}"')[1].split(">")[0]
+    assert f'hx-get="{link}"' in button and 'hx-target="#event-body"' in button
+
+
+def test_tonight_button_on_other_tabs_is_plain_link(client, league):
+    link = f"{url(league)}?view=tonight"
+    for tab in ("standings", "teams", "settings"):
+        html = client.get(url(league, tab)).content.decode()
+        button = html.split(f'href="{link}"')[1].split(">")[0]
+        assert "hx-target" not in button and "hx-get" not in button
+
+
+def test_forfeit_card_shows_winner(client, league):
+    match = Match.objects.filter(week__number=2).first()
+    Match.objects.filter(pk=match.pk).update(
+        forfeited_by=match.team_b, winner=match.team_a, status="final"
+    )
+    html = client.get(url(league, query="?view=tonight")).content.decode()
+    assert f"Forfeit · {match.team_a.name} wins" in html

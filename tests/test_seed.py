@@ -143,3 +143,10 @@ def test_seed_without_tonight_unchanged():
 
     call_command("seed_demo")
     assert _league_dates()[1][0] == date(2027, 3, 2)
+
+
+def test_seed_tonight_without_demo_league_errors():
+    call_command("seed_demo")
+    Event.objects.filter(name="Spring Tuesday League").delete()
+    with pytest.raises(CommandError, match="seed_demo --reset"):
+        call_command("seed_demo", "--tonight")

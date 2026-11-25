@@ -37,8 +37,8 @@ def test_one_event_redirects(admin_client):
 
 
 def test_several_events_listed(admin_client):
-    a = published("Alpha League", today())
     b = published("Bravo League", today())
+    a = published("Alpha League", today())
     r = admin_client.get("/tonight/")
     assert r.status_code == 200
     html = r.content.decode()

@@ -61,7 +61,7 @@ class Command(BaseCommand):
             if existing.exists():
                 if not options["reset"]:
                     if options["tonight"]:
-                        self._redate_league(Event.objects.get(organization__name=ORG_NAME, name=LEAGUE_NAME))
+                        self._redate_league(self._demo_league())
                         self.stdout.write("Demo league re-dated: Week 2 is tonight.")
                     else:
                         self.stdout.write("Demo data already exists. Use --reset to rebuild it.")
@@ -70,7 +70,13 @@ class Command(BaseCommand):
                 User.objects.filter(email__in=[ADMIN_EMAIL, PLAYER_EMAIL]).delete()
             self._seed()
             if options["tonight"]:
-                self._redate_league(Event.objects.get(organization__name=ORG_NAME, name=LEAGUE_NAME))
+                self._redate_league(self._demo_league())
+
+    def _demo_league(self):
+        try:
+            return Event.objects.get(organization__name=ORG_NAME, name=LEAGUE_NAME)
+        except Event.DoesNotExist:
+            raise CommandError("Demo league not found; run seed_demo --reset.")
 
     def _redate_league(self, league):
         """Date the weeks so Week 2 is today; the league starts a week earlier."""

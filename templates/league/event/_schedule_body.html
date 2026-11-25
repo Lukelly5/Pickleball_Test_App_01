@@ -4,21 +4,21 @@
     <a href="{{ schedule_url }}?week={{ pill.number }}{% if filter_query %}&amp;{{ filter_query }}{% endif %}" hx-get="{{ schedule_url }}?week={{ pill.number }}{% if filter_query %}&amp;{{ filter_query }}{% endif %}" hx-target="#event-body" hx-push-url="true" class="rounded-full px-3 py-1 text-sm font-semibold whitespace-nowrap {% if pill.number == page.state.week %}bg-brand text-white{% elif pill.cancelled %}text-muted-foreground line-through{% else %}text-ink/70 hover:text-ink{% endif %}"{% if pill.number == page.state.week %} aria-current="page"{% endif %}>{{ pill.label }}</a>
     {% endfor %}
   </nav>
-  <form method="get" action="{{ schedule_url }}" class="flex flex-wrap items-center gap-2" hx-get="{{ schedule_url }}" hx-target="#event-body" hx-push-url="true" hx-trigger="change">
+  <form method="get" action="{{ schedule_url }}" class="grid w-full grid-cols-2 gap-2 md:w-auto" hx-get="{{ schedule_url }}" hx-target="#event-body" hx-push-url="true" hx-trigger="change">
     {% if page.state.week %}<input type="hidden" name="week" value="{{ page.state.week }}">{% endif %}
-    <label class="flex items-center gap-2 text-sm font-semibold text-ink">Division
-      <select name="division" class="select">
+    <label class="grid gap-1 text-sm font-semibold text-ink">Division
+      <select name="division" class="select w-full min-w-0">
         <option value="">All</option>
         {% for level, label in page.divisions %}<option value="{{ level }}"{% if level == page.state.division %} selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </label>
-    <label class="flex items-center gap-2 text-sm font-semibold text-ink">Flight
-      <select name="flight" class="select">
+    <label class="grid gap-1 text-sm font-semibold text-ink">Flight
+      <select name="flight" class="select w-full min-w-0">
         <option value="">All</option>
         {% for pk, name in page.flights %}<option value="{{ pk }}"{% if pk == page.state.flight %} selected{% endif %}>{{ name }}</option>{% endfor %}
       </select>
     </label>
-    <button type="submit" class="btn" data-variant="outline">Apply</button>
+    <button type="submit" class="btn col-span-2" data-variant="outline">Apply</button>
   </form>
 </div>
 
@@ -28,6 +28,7 @@
 {% if page.rounds %}
   {% for round in page.rounds %}
   <section class="mt-5" aria-label="Round {{ round.number }}">
+    <h3 class="mb-2 text-sm font-extrabold text-ink">Round {{ round.number }}</h3>
     <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
       {% for card in round.cards %}{% include "league/event/_card.html" %}{% endfor %}
     </div>

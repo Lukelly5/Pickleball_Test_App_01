@@ -1,9 +1,9 @@
-<div class="flex flex-wrap items-start justify-between gap-3 pt-5 md:pt-8">
+<div class="flex flex-wrap items-start justify-between gap-3">
   <div class="min-w-0">
     <h1 class="text-[22px] font-extrabold leading-tight text-ink md:text-[28px]">{{ event.name }}</h1>
     <p class="mt-1">{% include "components/status_badge.html" with value=event.status label=event.get_status_display only %}</p>
   </div>
-  {% if schedule_url %}<a href="{{ schedule_url }}?view=tonight" class="btn" data-variant="outline" hx-get="{{ schedule_url }}?view=tonight" hx-target="#event-body" hx-push-url="true">Tonight</a>{% endif %}
+  {% if schedule_url %}<a href="{{ schedule_url }}?view=tonight" class="btn" data-variant="outline"{% if swap_body %} hx-get="{{ schedule_url }}?view=tonight" hx-target="#event-body" hx-push-url="true"{% endif %}>Tonight</a>{% endif %}
 </div>
 <nav aria-label="Event" class="mt-4 mb-5 flex gap-6 overflow-x-auto border-b border-border">
   {% for tab in tabs %}

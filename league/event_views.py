@@ -80,7 +80,11 @@ def _my_team_ids(request, event, token) -> frozenset[int]:
 
 def _frame(request, event, active: str, token: str | None) -> dict:
     admin = bool(getattr(request.user, "is_admin", False)) and token is None
+    schedule_url = (
+        reverse("share_schedule", args=[token]) if token else reverse("event_schedule", args=[event.pk])
+    )
     return {
+        "schedule_url": schedule_url,
         "event": event,
         "tabs": event_tabs(event, active, token=token, admin=admin),
         "base_template": "base_public.html" if token else "base_app.html",
@@ -93,16 +97,13 @@ def render_schedule(request, event, *, token: str | None = None):
     today = timezone.localdate()
     state = read_state(event, request.GET, today)
     page = build_page(event, state, today, _my_team_ids(request, event, token))
-    schedule_url = (
-        reverse("share_schedule", args=[token]) if token else reverse("event_schedule", args=[event.pk])
-    )
     filters = {} if state.tonight else {
         k: v for k, v in (("division", state.division), ("flight", state.flight)) if v
     }
     context = {
         **_frame(request, event, "schedule", token),
         "page": page,
-        "schedule_url": schedule_url,
+        "swap_body": True,
         "filter_query": urlencode(filters),
         "week_day": short_day(page.week_date) if page.week_date else "",
         "next_day": short_day(page.next_night.date) if page.next_night else "",
