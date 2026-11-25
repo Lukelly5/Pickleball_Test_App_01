@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 
 _BEST_OF = {"single": 1, "best_of_3": 3, "best_of_5": 5}
-_NUMBER = re.compile(r"\d{1,2}")
+_NUMBER = re.compile(r"[0-9]{1,2}")
 
 
 @dataclass(frozen=True)

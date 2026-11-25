@@ -220,7 +220,7 @@ def match_score_clear(request, pk: int, match_pk: int):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
     if request.POST.get("confirm") != "1":
-        return render_score(request, event, match, _read_check(request, event, match), confirm="clear")
+        return render_score(request, event, match, None, confirm="clear")
     try:
         saved = clear_score(event, match.pk, request.user)
     except ScoreRefused as refusal:

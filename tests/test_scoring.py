@@ -106,7 +106,7 @@ def test_best_of_1_never_not_decided():
     assert chk(B1, ("11", "7")).messages == ()
 
 
-@pytest.mark.parametrize("junk", ["abc", "-3", "100", "11.5", "1e1"])
+@pytest.mark.parametrize("junk", ["abc", "-3", "100", "11.5", "1e1", "١١"])
 def test_junk_input(junk):  # Review Focus 1
     c = chk(B1, (junk, "7"), admin=True)
     assert not c.can_save and c.messages[0].text == "Game 1: scores must be whole numbers from 0 to 99."

@@ -97,7 +97,7 @@ def _frame(request, event, active: str, token: str | None) -> dict:
 def render_schedule(request, event, *, token: str | None = None):
     today = timezone.localdate()
     state = read_state(event, request.GET, today)
-    page = build_page(event, state, today, _my_team_ids(request, event, token))
+    page = build_page(event, state, today, _my_team_ids(request, event, token), show_editor=token is None)
     scorable = frozenset()
     if token is None:
         match_ids = [c.match_id for r in page.rounds for c in r.cards]

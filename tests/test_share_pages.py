@@ -120,3 +120,17 @@ def test_share_stub_tonight_link_is_plain(client, event):
     link = f'/s/{t}/schedule/?view=tonight'
     button = html.split(f'href="{link}"')[1].split(">")[0]
     assert "hx-target" not in button
+
+
+def test_share_page_hides_editor_and_score_links(client, event):
+    from accounts.models import User
+    from league.models import Match
+    from league.score_edits import save_score
+
+    admin = User.objects.create_user("secret-admin@example.com", "pw", organization=event.organization, is_admin=True)
+    m = Match.objects.filter(flight__division__event=event, week__number=2).first()
+    save_score(event, m.pk, admin, [("11", "7")], timezone.localdate())
+    html = get(client, event.share_token).content.decode()
+    assert "11" in html
+    for leak in ("Last edited by", "secret-admin@example.com", "/matches/", "score-sheet"):
+        assert leak not in html

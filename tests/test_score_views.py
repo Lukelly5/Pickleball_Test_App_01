@@ -224,3 +224,26 @@ def test_player_late_save_after_admin_lock_shows_refusal(client, league, m2):
     assert r.status_code == 200
     assert "An admin has already scored this match." in r.content.decode().replace("&#x27;", "'")
     assert sorted(m2.games.values_list("points_a", "points_b")) == [(11, 5), (11, 7)]
+
+
+def test_non_member_gets_403_on_admin_scored_match(client, league, m2):
+    client.post(score_url(m2), WIN)
+    other = next(t for t in Team.objects.filter(flight__division__event=league) if t not in (m2.team_a, m2.team_b))
+    client.force_login(user_on(other))
+    assert client.post(score_url(m2), WIN).status_code == 403
+
+
+def test_clear_confirm_shows_saved_values_without_messages(client, league, m2):
+    client.post(score_url(m2), WIN)
+    r = client.post(score_url(m2, "clear/"), {"g1a": "11", "g1b": "11", "g2a": "", "g2b": ""})
+    html = r.content.decode()
+    assert "Clear the score for" in html
+    assert "can&#x27;t end in a tie" not in html and "Save anyway" not in html
+    assert 'value="7"' in html
+
+
+def test_cleared_card_has_no_last_edited(client, league, m2):
+    client.post(score_url(m2), WIN)
+    assert "Last edited by" in card_html(schedule(client, league), m2)
+    client.post(score_url(m2, "clear/"), {"confirm": "1"})
+    assert "Last edited by" not in card_html(schedule(client, league), m2)

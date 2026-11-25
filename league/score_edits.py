@@ -57,7 +57,8 @@ def _player_team_ids(user) -> frozenset[int]:
     return frozenset(player.teams.values_list("pk", flat=True))
 
 
-def _can_score(user, event: Event, match: Match, today: date, team_ids) -> bool:
+def _rules_allow(user, event: Event, match: Match, today: date, team_ids) -> bool:
+    """The scoring rules with the admin lock ignored; the one place they live."""
     if not _playable(event, match):
         return False
     if user.is_admin:
@@ -67,8 +68,11 @@ def _can_score(user, event: Event, match: Match, today: date, team_ids) -> bool:
         and event.player_score_entry
         and bool({match.team_a_id, match.team_b_id} & team_ids)
         and (match.week.date is None or match.week.date <= today)
-        and not admin_locked(match)
     )
+
+
+def _can_score(user, event: Event, match: Match, today: date, team_ids) -> bool:
+    return _rules_allow(user, event, match, today, team_ids) and (user.is_admin or not admin_locked(match))
 
 
 def _event_of(match: Match) -> Event:
@@ -126,10 +130,10 @@ def save_score(
     with transaction.atomic():
         locked, match = _lock(event, match_id)
         team_ids = frozenset() if user.is_admin else _player_team_ids(user)
-        if not _can_score(user, locked, match, today, team_ids):
-            if admin_locked(match) and not user.is_admin:
-                raise ScoreRefused(ADMIN_LOCKED)
+        if not _rules_allow(user, locked, match, today, team_ids):
             raise PermissionDenied
+        if not user.is_admin and admin_locked(match):
+            raise ScoreRefused(ADMIN_LOCKED)
         check = check_score(
             Format.of(locked), raw, (match.team_a.name, match.team_b.name), admin=user.is_admin
         )

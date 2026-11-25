@@ -143,7 +143,7 @@ class SchedulePage:
 _NOT_PLAYED = (Match.Status.CANCELLED, Match.Status.VOID)
 
 
-def card_for(match: Match, my_team_ids: frozenset[int]) -> Card:
+def card_for(match: Match, my_team_ids: frozenset[int], show_editor: bool = True) -> Card:
     forfeit = match.forfeited_by_id is not None
     level = match.flight.division.level
     games = sorted(match.games.all(), key=lambda g: g.game_no)
@@ -178,12 +178,12 @@ def card_for(match: Match, my_team_ids: frozenset[int]) -> Card:
         match.status,
         forfeit,
         match.winner.name if match.winner else "",
-        editor_name(match.last_edited_by),
+        editor_name(match.last_edited_by) if show_editor else "",
     )
 
 
 def _rounds(
-    event: Event, week: Week, state: ScheduleState, my_team_ids: frozenset[int]
+    event: Event, week: Week, state: ScheduleState, my_team_ids: frozenset[int], show_editor: bool
 ) -> list[Round]:
     matches = Match.objects.filter(week=week, flight__division__event=event)
     if state.flight:
@@ -213,7 +213,7 @@ def _rounds(
         rounds.append(
             Round(
                 number,
-                [card_for(m, my_team_ids) for m in in_round],
+                [card_for(m, my_team_ids, show_editor) for m in in_round],
                 sorted(t.name for t in flight_teams if t.pk not in playing),
             )
         )
@@ -225,13 +225,14 @@ def build_page(
     state: ScheduleState,
     today: date,
     my_team_ids: frozenset[int] = frozenset(),
+    show_editor: bool = True,
 ) -> SchedulePage:
     weeks = list(event.weeks.all())
     week = next((w for w in weeks if w.number == state.week), None)
     cancelled = week is not None and not _live(week)
     divisions, flights = filter_options(event, state.division)
     has_matches = Match.objects.filter(flight__division__event=event).exists()
-    rounds = _rounds(event, week, state, my_team_ids) if week and not cancelled else []
+    rounds = _rounds(event, week, state, my_team_ids, show_editor) if week and not cancelled else []
 
     if not has_matches:
         empty = "The schedule hasn't been published yet."

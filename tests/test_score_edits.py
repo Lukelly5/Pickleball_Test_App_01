@@ -275,3 +275,13 @@ def test_scorable_ids(league, m2, player_on):
     assert expected
     ids = [m.pk for m in all_matches]
     assert scorable_ids(user, league, ids, TODAY) == expected
+
+
+def test_non_member_on_admin_locked_match_is_denied(league, admin, m2, player_on):
+    entry_on(league)
+    save_score(league, m2.pk, admin, WIN_2_1, TODAY)
+    other = next(t for t in Team.objects.filter(flight__division__event=league) if t not in (m2.team_a, m2.team_b))
+    user = player_user(m2, team=other, email="q@example.com")
+    with pytest.raises(PermissionDenied):
+        save_score(league, m2.pk, user, WIN_2_1, TODAY)
+    assert not can_score(user, m2, TODAY)
