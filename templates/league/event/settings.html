@@ -1,0 +1,33 @@
+{% extends base_template %}
+{% block title %}Settings · {{ event.name }}{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}mx-auto w-full max-w-[1200px] px-4 pb-16{% endblock %}
+{% block content %}
+{% include "league/event/_header.html" %}
+<div class="grid max-w-[640px] gap-5">
+  {% if confirm == "reset" %}
+  <div role="alert" class="grid gap-3 rounded-[10px] border border-warn/30 bg-warn-bg px-4 py-3 text-sm text-warn">
+    <p>The old link will stop working. Reset?</p>
+    <form method="post" action="{% url 'event_share_reset' event.pk %}" class="flex flex-wrap gap-3">{% csrf_token %}
+      <button type="submit" name="confirm" value="1" class="btn">Reset link</button>
+      <a href="{% url 'event_settings' event.pk %}" class="btn" data-variant="outline">Keep this link</a>
+    </form>
+  </div>
+  {% endif %}
+  <section class="card grid gap-3 p-5">
+    <h2 class="text-lg font-extrabold text-ink">Share link</h2>
+    <p class="text-sm text-muted-foreground">Anyone with this link can see the schedule, standings and teams. No login needed.</p>
+    <div class="flex flex-wrap gap-3">
+      <input id="share-url" type="text" readonly value="{{ share_url }}" onfocus="this.select()" aria-label="Share link" class="min-w-0 flex-1 rounded-[10px] border border-border bg-card px-3 py-2 text-sm text-ink">
+      <button type="button" class="btn" data-variant="outline" onclick="navigator.clipboard.writeText(document.getElementById('share-url').value); this.textContent = 'Copied'">Copy</button>
+    </div>
+    <form method="post" action="{% url 'event_share_reset' event.pk %}">{% csrf_token %}
+      <button type="submit" class="btn" data-variant="outline">Reset link</button>
+    </form>
+  </section>
+  <section class="card grid gap-3 p-5">
+    <h2 class="text-lg font-extrabold text-ink">Edit league</h2>
+    <div><a href="{% url 'event_setup' event.pk %}" class="btn" data-variant="outline">Edit setup</a></div>
+  </section>
+</div>
+{% endblock %}

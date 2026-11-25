@@ -47,6 +47,8 @@ def test_admin_sees_all_tabs(client, league):
     assert 'aria-current="page"' in html
     schedule_tab = html.split(f'href="/events/{league.pk}/schedule/"')[1].split(">")[0]
     assert 'aria-current="page"' in schedule_tab
+    assert f'href="/events/{league.pk}/settings/"' in html
+    assert ">Settings<" in html
 
 
 def test_game_night_opens_tonight(client, league):
@@ -67,6 +69,7 @@ def test_player_sees_no_settings(client, league):
     assert r.status_code == 200
     html = r.content.decode()
     assert "/settings/" not in html
+    assert ">Settings<" not in html
     assert "data-you" in html
 
 

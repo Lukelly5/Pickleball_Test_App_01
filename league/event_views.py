@@ -2,13 +2,17 @@
 
 from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import patch_vary_headers
+from django.views.decorators.http import require_POST
 
+from accounts.permissions import admin_required
 from accounts.roles import player_for
 from ui.nav import NavLink, optional_reverse
 
@@ -127,6 +131,42 @@ def event_standings(request, pk: int):
 def event_teams(request, pk: int):
     event = member_event(request, pk)
     return draft_guard(request, event) or render_coming_soon(request, event, "teams")
+
+
+def _locked(event) -> Event:
+    """The event re-read under its row lock; call inside transaction.atomic()."""
+    return Event.objects.select_for_update().get(pk=event.pk)
+
+
+def render_settings(request, event, *, confirm: str | None = None):
+    with transaction.atomic():
+        token = _locked(event).ensure_share_token()
+    context = {
+        **_frame(request, event, "settings", None),
+        "share_url": request.build_absolute_uri(reverse("share_schedule", args=[token])),
+        "confirm": confirm,
+    }
+    return render(request, "league/event/settings.html", context)
+
+
+@admin_required
+def event_settings(request, pk: int):
+    event = member_event(request, pk)
+    return draft_guard(request, event) or render_settings(request, event)
+
+
+@admin_required
+@require_POST
+def event_share_reset(request, pk: int):
+    event = member_event(request, pk)
+    if redirect_to_preview := draft_guard(request, event):
+        return redirect_to_preview
+    if request.POST.get("confirm") != "1":
+        return render_settings(request, event, confirm="reset")
+    with transaction.atomic():
+        _locked(event).reset_share_token()
+    messages.success(request, "New share link created.")
+    return redirect("event_settings", event.pk)
 
 
 def shared_event(token: str) -> Event:
